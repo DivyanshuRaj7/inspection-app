@@ -78,12 +78,13 @@ export function useSession(userId) {
     setAllSessions((prev) => [...prev, newSession]);
   }
 
-  // Accepts either an array of photos (legacy) or an object { photos, ocrText, confidence, isImported }
+  // Accepts either an array of photos (legacy) or an object { photos, ocrText, ocrRawText, confidence, isImported }
   async function addItem(payload) {
     if (!session) return null;
 
     let photos = [];
     let ocrText = '';
+    let ocrRawText = '';
     let confidence = 0;
     let isImported = false;
 
@@ -92,6 +93,7 @@ export function useSession(userId) {
     } else if (payload && typeof payload === 'object') {
       photos = payload.photos || [];
       ocrText = payload.ocrText || '';
+      ocrRawText = payload.ocrRawText || '';
       confidence = payload.confidence || 0;
       isImported = Boolean(payload.isImported);
     }
@@ -120,6 +122,7 @@ export function useSession(userId) {
       id: itemId,
       photos,
       ocrText,
+      ocrRawText,
       confidence,
       checkResult,
       createdAt: new Date().toISOString(),

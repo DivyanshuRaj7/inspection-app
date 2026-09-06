@@ -32,7 +32,19 @@ export default function ItemResult({ session }) {
     );
   }
   const { visitNumber, shopNumber, startedAt } = session;
-  const { checkResult, photos, ocrText } = item;
+  const { checkResult, photos, ocrText, ocrRawText } = item;
+
+  // Display-only: rule-engine keys (MANUFACTURER_ADDRESS) become
+  // human-readable labels; internal flags like isImported are skipped.
+  function fieldLabel(key) {
+    const words = key.toLowerCase().replace(/_/g, ' ');
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  }
+  const fieldEntries = checkResult?.extractedFields
+    ? Object.entries(checkResult.extractedFields).filter(
+        ([, val]) => val && typeof val === 'object' && typeof val.text === 'string'
+      )
+    : [];
 
   const verdict = checkResult?.verdict || 'PENDING';
   const verdictColors = {
@@ -341,14 +353,26 @@ export default function ItemResult({ session }) {
         </section>
       )}
 
-      {checkResult?.extractedFields && (
+      {fieldEntries.length > 0 && (
         <section style={{ marginBottom: '1.5rem' }}>
           <h3>Extracted Fields</h3>
-          <div style={{ background: '#181818', color: '#e5e5e5', padding: '1rem', borderRadius: '4px', fontSize: '0.9rem' }}>
-            {Object.entries(checkResult.extractedFields).map(([key, val]) => (
-              <div key={key} style={{ marginBottom: '0.4rem' }}>
-                <span style={{ color: '#888' }}>{key}: </span>
-                <span>{typeof val === 'object' ? val.text : String(val)}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {fieldEntries.map(([key, val]) => (
+              <div
+                key={key}
+                style={{
+                  background: '#181818',
+                  color: '#e5e5e5',
+                  border: '1px solid #333',
+                  padding: '0.6rem 0.75rem',
+                  borderRadius: '4px',
+                  fontSize: '0.9rem',
+                }}
+              >
+                <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                  {fieldLabel(key)}
+                </div>
+                <div style={{ marginTop: '0.15rem' }}>{val.text}</div>
               </div>
             ))}
           </div>
@@ -370,8 +394,8 @@ export default function ItemResult({ session }) {
       </section>
 
       {ocrText && (
-        <section>
-          <h3>Raw OCR Output</h3>
+        <section style={{ marginBottom: '1.5rem' }}>
+          <h3>Label Text</h3>
           <pre
             style={{
               background: '#111',
@@ -381,10 +405,30 @@ export default function ItemResult({ session }) {
               fontSize: '0.8rem',
               overflowX: 'auto',
               maxHeight: 180,
+              whiteSpace: 'pre-wrap',
             }}
           >
             {ocrText}
           </pre>
+          {ocrRawText && ocrRawText !== ocrText && (
+            <details style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#888' }}>
+              <summary style={{ cursor: 'pointer' }}>Raw OCR output (unprocessed)</summary>
+              <pre
+                style={{
+                  background: '#0a0a0a',
+                  padding: '0.75rem',
+                  borderRadius: '4px',
+                  fontSize: '0.75rem',
+                  overflowX: 'auto',
+                  maxHeight: 180,
+                  whiteSpace: 'pre-wrap',
+                  marginTop: '0.5rem',
+                }}
+              >
+                {ocrRawText}
+              </pre>
+            </details>
+          )}
         </section>
       )}
 
