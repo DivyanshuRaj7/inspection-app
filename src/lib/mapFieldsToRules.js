@@ -15,6 +15,31 @@ const FIELD_SYNONYMS = {
   COUNTRY_OF_ORIGIN: ['country of origin', 'made in', 'origin'],
 };
 
+/**
+ * Classifies one OCR'd region (e.g. a detectTextRegions box) into a rule
+ * field, or rejects it. Rejection is explicit and two-tiered: `empty`
+ * means Tesseract found no text at all (mascot art, blank backdrop, wood
+ * grain), `no-keyword` means text exists but names no regulated field
+ * (brand slogans, logos, barcode digits). Both are "not a field" — the
+ * distinction tells Phase 2 whether the box was unreadable or readable
+ * but irrelevant.
+ *
+ * @param {string} regionText - Raw OCR text of a single region.
+ * @returns {{ field: string, text: string } | { field: null, reason: 'empty' | 'no-keyword' }}
+ */
+export function classifyRegionText(regionText) {
+  const text = (regionText || '').trim().replace(/\s+/g, ' ');
+  if (!text) return { field: null, reason: 'empty' };
+
+  const lower = text.toLowerCase();
+  for (const [ruleField, synonyms] of Object.entries(FIELD_SYNONYMS)) {
+    if (synonyms.length > 0 && synonyms.some((syn) => lower.includes(syn))) {
+      return { field: ruleField, text };
+    }
+  }
+  return { field: null, reason: 'no-keyword' };
+}
+
 export function mapFieldsToRules(ocrText, wholeImageConfidence, isImported = false) {
   const lines = (ocrText || '').split('\n').map((l) => l.trim()).filter(Boolean);
   const confidence = (wholeImageConfidence || 0) / 100; // RE expects 0-1, CV gives 0-100
