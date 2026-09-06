@@ -6,13 +6,19 @@ export async function checkImage(photo, options = {}) {
   const qcResult = await qualityCheck(photo, options);
 
   if (!qcResult.pass) {
-    return { qualityCheck: qcResult, ocrText: null, confidence: 0 };
+    return { qualityCheck: qcResult, ocrText: null, ocrRawText: null, confidence: 0 };
   }
 
   const ocrResult = await runOCR(photo, options); // v2 behavior: options forwarded through
+  const ocrRawText = ocrResult.ocrText;
+  // Cleaned text is what the inspector reads and what field mapping runs
+  // on; the raw Tesseract output is kept alongside for the details view
+  // and Person 3's debugging.
+  const { cleanedText } = cleanOcrText(ocrRawText);
   return {
     qualityCheck: qcResult,
-    ocrText: ocrResult.ocrText,
+    ocrText: cleanedText,
+    ocrRawText,
     confidence: ocrResult.confidence,
   };
 }

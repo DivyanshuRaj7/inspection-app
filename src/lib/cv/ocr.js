@@ -22,7 +22,7 @@ let workerPSM = null;
 async function getWorker(psm) {
   if (!workerPromise) {
     workerPromise = (async () => {
-      const worker = await createWorker('eng');
+      const worker = await createWorker('eng+hin');
       await worker.setParameters({ tessedit_pageseg_mode: psm });
       workerPSM = psm;
       return worker;
@@ -36,7 +36,7 @@ async function getWorker(psm) {
 }
 
 /**
- * Runs OCR on the full image using Tesseract.js (English only).
+ * Runs OCR on the full image using Tesseract.js (English + Hindi, single pass).
  * The image is preprocessed (upscale small captures, grayscale, contrast,
  * denoise, sharpen, adaptive threshold) before recognition.
  *

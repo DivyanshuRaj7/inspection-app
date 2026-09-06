@@ -188,6 +188,7 @@ export default function Capture({ addItem, session, sessionLoaded }) {
     setPhotos((prev) => [...prev, dataUrl]);
     ocrResultsRef.current.push({
       ocrText: cvResult.ocrText,
+      ocrRawText: cvResult.ocrRawText,
       confidence: cvResult.confidence,
     });
     setRetakePrompt(null);
@@ -279,6 +280,7 @@ export default function Capture({ addItem, session, sessionLoaded }) {
 
     // Combine OCR text from all captured photos for this item
     const combinedOcrText = ocrResultsRef.current.map((r) => r.ocrText).filter(Boolean).join('\n');
+    const combinedRawText = ocrResultsRef.current.map((r) => r.ocrRawText).filter(Boolean).join('\n');
     const avgConfidence = ocrResultsRef.current.length > 0
       ? ocrResultsRef.current.reduce((acc, cur) => acc + (cur.confidence || 0), 0) / ocrResultsRef.current.length
       : 0;
@@ -286,6 +288,7 @@ export default function Capture({ addItem, session, sessionLoaded }) {
     const itemId = await addItem({
       photos: photosRef.current,
       ocrText: combinedOcrText,
+      ocrRawText: combinedRawText,
       confidence: avgConfidence,
     });
     setPhotos([]);
