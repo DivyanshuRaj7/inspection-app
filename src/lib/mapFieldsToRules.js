@@ -40,6 +40,27 @@ export function classifyRegionText(regionText) {
   return { field: null, reason: 'no-keyword' };
 }
 
+/**
+ * Builds the boxed-fields array from OCR'd regions: each entry carries the
+ * resolved field, its text, and the region's bounding box. Regions whose
+ * text classified to a null field (empty or no-keyword junk — mascot art,
+ * logos, table grain, barcode digits) are dropped here, so a null-field
+ * region can never contribute a boundingBox to the fields[] array. Only
+ * regions like region 19 → MANUFACTURER_ADDRESS appear downstream.
+ *
+ * @param {Array<{ box: { x: number, y: number, w: number, h: number }, text: string }>} regions
+ * @returns {Array<{ field: string, text: string, boundingBox: { x: number, y: number, w: number, h: number } }>}
+ */
+export function attachRegionBoxes(regions) {
+  const fields = [];
+  for (const { box, text } of regions || []) {
+    const verdict = classifyRegionText(text);
+    if (verdict.field === null) continue;
+    fields.push({ field: verdict.field, text: verdict.text, boundingBox: { ...box } });
+  }
+  return fields;
+}
+
 export function mapFieldsToRules(ocrText, wholeImageConfidence, isImported = false) {
   const lines = (ocrText || '').split('\n').map((l) => l.trim()).filter(Boolean);
   const confidence = (wholeImageConfidence || 0) / 100; // RE expects 0-1, CV gives 0-100
