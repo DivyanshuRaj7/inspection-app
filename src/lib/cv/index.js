@@ -27,4 +27,5 @@ export async function checkImage(photo, options = {}) {
 export { qualityCheck, waitForOpenCV, DEFAULT_BLUR_THRESHOLD } from './qualityCheck.js';
 export { runOCR, terminateOCRWorker, PSM } from './ocr.js';
 export { cleanOcrText } from './cleanOcrText.js';
+export { detectTextRegions } from './textRegions.js';
 export default checkImage;
