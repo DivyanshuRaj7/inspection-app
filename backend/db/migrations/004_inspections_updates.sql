@@ -1,0 +1,1 @@
+ALTER TABLE inspections ADD COLUMN IF NOT EXISTS mrp_raw_text TEXT NULL;
