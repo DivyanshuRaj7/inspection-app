@@ -58,7 +58,16 @@ export default function ItemResult({ session }) {
     return bytes;
   }
 
-  function exportItemPDF() {
+  function getImageDimensions(dataUrl) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onerror = () => resolve({ width: 1, height: 1 }); // square fallback if a photo somehow fails to load
+      img.src = dataUrl;
+    });
+  }
+
+  async function exportItemPDF() {
     const doc = new jsPDF();
     let y = 15;
 
@@ -79,6 +88,7 @@ export default function ItemResult({ session }) {
     doc.setFontSize(10);
     if (item.checkResult) {
       doc.text('Reviewed — see violations below.', 10, y);
+      y += 6;
       // Real violation rendering (grouped by tier, clause citations) goes
       // here once Person 4's check-result shape is integrated.
       doc.text(`Verdict: ${verdict}`, 10, y);
@@ -90,7 +100,7 @@ export default function ItemResult({ session }) {
         y += 6;
         checkResult.failures.forEach((f) => {
           doc.setFontSize(9);
-          doc.text(`• [${f.rule_id}] ${f.description}: ${f.reason}`, 15, y);
+          doc.text(`• [${f.rule_id}]: ${f.reason}`, 15, y);
           y += 6;
         });
       }
@@ -102,13 +112,19 @@ export default function ItemResult({ session }) {
     y += 8;
 
     let x = 10;
-    item.photos.forEach((photo) => {
+    const photoDims = await Promise.all(item.photos.map(getImageDimensions));
+    item.photos.forEach((photo, i) => {
       if (x > 150) {
         x = 10;
         y += 35;
       }
+      const { width: natW, height: natH } = photoDims[i];
+      const maxBox = 30;
+      const scale = Math.min(maxBox / natW, maxBox / natH);
+      const w = natW * scale;
+      const h = natH * scale;
       try {
-        doc.addImage(photo, 'JPEG', x, y, 30, 30);
+        doc.addImage(photo, 'JPEG', x, y, w, h);
       } catch (e) {
         // skip image on failure rather than break export
       }
@@ -176,7 +192,7 @@ export default function ItemResult({ session }) {
       checkResult.failures.forEach((f) => {
         children.push(
           new Paragraph({
-            text: `[${f.rule_id}] ${f.description} — ${f.reason}`,
+            text: `[${f.rule_id}]: ${f.reason}`,
           })
         );
       });
@@ -190,8 +206,15 @@ export default function ItemResult({ session }) {
       })
     );
 
+    const docxPhotoDims = await Promise.all(item.photos.map(getImageDimensions));
     item.photos.forEach((photo, index) => {
       const imageType = photo.startsWith('data:image/png') ? 'png' : 'jpg';
+      const { width: natW, height: natH } = docxPhotoDims[index];
+      const maxW = 320;
+      const maxH = 180;
+      const scale = Math.min(maxW / natW, maxH / natH);
+      const w = natW * scale;
+      const h = natH * scale;
 
       children.push(
         new Paragraph({
@@ -205,8 +228,8 @@ export default function ItemResult({ session }) {
               data: dataUrlToUint8Array(photo),
               type: imageType,
               transformation: {
-                width: 320,
-                height: 180,
+                width: w,
+                height: h,
               },
             }),
           ],
@@ -300,7 +323,7 @@ export default function ItemResult({ session }) {
                 }}
               >
                 <div style={{ fontWeight: 'bold', color: '#ff7777' }}>
-                  [{f.rule_id}] {f.description}
+                  [{f.rule_id}]
                 </div>
                 <div style={{ fontSize: '0.9rem', color: '#ccc', marginTop: '0.25rem' }}>
                   {f.reason}

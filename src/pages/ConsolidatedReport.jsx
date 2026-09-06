@@ -32,7 +32,16 @@ export default function ConsolidatedReport({ session, endSession }) {
     return bytes;
   }
 
-  function exportPDF() {
+  function getImageDimensions(dataUrl) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onerror = () => resolve({ width: 1, height: 1 });
+      img.src = dataUrl;
+    });
+  }
+
+  async function exportPDF() {
     const doc = new jsPDF();
     let y = 15;
 
@@ -53,6 +62,10 @@ export default function ConsolidatedReport({ session, endSession }) {
     if (items.length === 0) {
       doc.text('No items scanned yet in this session.', 10, y);
     } else {
+      const itemPhotoDims = await Promise.all(
+        items.map((item) => Promise.all(item.photos.map(getImageDimensions)))
+      );
+
       items.forEach((item, index) => {
         if (y > 250) {
           doc.addPage();
@@ -68,7 +81,7 @@ export default function ConsolidatedReport({ session, endSession }) {
           doc.text('Violations:', 10, y);
           y += 5;
           item.checkResult.failures.forEach((f) => {
-            doc.text(` • [${f.clause_citation || f.rule_id}] ${f.description}: ${f.reason}`, 15, y);
+            doc.text(` • [${f.clause_citation || f.rule_id}]: ${f.reason}`, 15, y);
             y += 5;
           });
         } else if (item.checkResult) {
@@ -79,15 +92,20 @@ export default function ConsolidatedReport({ session, endSession }) {
           y += 6;
         }
 
-        // Embed photo thumbnails, up to 3 per row, 30x30mm each
+        // Embed photo thumbnails, up to 3 per row, scaled to fit a 30x30mm box
         let x = 10;
         item.photos.forEach((photo, i) => {
           if (x > 150) {
             x = 10;
             y += 35;
           }
+          const { width: natW, height: natH } = itemPhotoDims[index][i];
+          const maxBox = 30;
+          const scale = Math.min(maxBox / natW, maxBox / natH);
+          const w = natW * scale;
+          const h = natH * scale;
           try {
-            doc.addImage(photo, 'JPEG', x, y, 30, 30);
+            doc.addImage(photo, 'JPEG', x, y, w, h);
           } catch (e) {
             // If a given image fails to embed, skip it rather than break the whole export
           }
@@ -142,7 +160,9 @@ export default function ConsolidatedReport({ session, endSession }) {
 
     if (items.length === 0) {
       children.push(new Paragraph('No items scanned yet in this session.'));
-    }
+    } const docxPhotoDims = await Promise.all(
+      items.map((item) => Promise.all(item.photos.map(getImageDimensions)))
+    );
 
     items.forEach((item, index) => {
       const verdict = item.checkResult?.verdict || 'PENDING';
@@ -166,7 +186,7 @@ export default function ConsolidatedReport({ session, endSession }) {
             new Paragraph({
               children: [
                 new TextRun({ text: `Violation [${f.clause_citation || f.rule_id}]: `, bold: true }),
-                new TextRun(`${f.description} — ${f.reason}`),
+                new TextRun(`${f.reason}`),
               ],
             })
           );
@@ -186,6 +206,12 @@ export default function ConsolidatedReport({ session, endSession }) {
 
       item.photos.forEach((photo, photoIndex) => {
         const imageType = photo.startsWith('data:image/png') ? 'png' : 'jpg';
+        const { width: natW, height: natH } = docxPhotoDims[index][photoIndex];
+        const maxW = 320;
+        const maxH = 180;
+        const scale = Math.min(maxW / natW, maxH / natH);
+        const w = natW * scale;
+        const h = natH * scale;
 
         children.push(
           new Paragraph({
@@ -202,8 +228,8 @@ export default function ConsolidatedReport({ session, endSession }) {
                 data: dataUrlToUint8Array(photo),
                 type: imageType,
                 transformation: {
-                  width: 320,
-                  height: 180,
+                  width: w,
+                  height: h,
                 },
               }),
             ],
@@ -318,7 +344,7 @@ export default function ConsolidatedReport({ session, endSession }) {
                     <ul style={{ margin: '0.25rem 0', paddingLeft: '1.2rem' }}>
                       {item.checkResult.failures.map((f, fi) => (
                         <li key={fi}>
-                          [{f.clause_citation || f.rule_id}] {f.description}
+                          [{f.clause_citation || f.rule_id}]: {f.reason}
                         </li>
                       ))}
                     </ul>
