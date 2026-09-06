@@ -1,6 +1,48 @@
 import { waitForOpenCV } from './qualityCheck.js';
 
 /**
+ * Merges boxes that substantially overlap (split line fragments, nested
+ * duplicates) into their unions. Overlap is measured as intersection over
+ * the SMALLER box, so a sliver inside a line still merges while two merely
+ * adjacent lines stay apart. Runs to fixpoint so chains collapse fully.
+ *
+ * @param {Array<{ x: number, y: number, w: number, h: number }>} boxes
+ * @param {number} [minOverlap=0.3]
+ * @returns {Array<{ x: number, y: number, w: number, h: number }>}
+ */
+export function mergeOverlappingBoxes(boxes, minOverlap = 0.3) {
+  const current = boxes.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }));
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 0; i < current.length && !changed; i++) {
+      for (let j = i + 1; j < current.length; j++) {
+        const a = current[i];
+        const c = current[j];
+        const ix = Math.max(0, Math.min(a.x + a.w, c.x + c.w) - Math.max(a.x, c.x));
+        const iy = Math.max(0, Math.min(a.y + a.h, c.y + c.h) - Math.max(a.y, c.y));
+        const inter = ix * iy;
+        if (inter === 0) continue;
+        if (inter / Math.min(a.w * a.h, c.w * c.h) >= minOverlap) {
+          const x = Math.min(a.x, c.x);
+          const y = Math.min(a.y, c.y);
+          current[i] = {
+            x,
+            y,
+            w: Math.max(a.x + a.w, c.x + c.w) - x,
+            h: Math.max(a.y + a.h, c.y + c.h) - y,
+          };
+          current.splice(j, 1);
+          changed = true;
+          break;
+        }
+      }
+    }
+  }
+  return current;
+}
+
+/**
  * Detects text regions on a product label with classical contour analysis
  * (no trained model): threshold the label into ink-vs-background, morphologically
  * close the ink so glyphs merge into line/block blobs, then return one bounding
@@ -111,8 +153,9 @@ export async function detectTextRegions(source, options = {}) {
       boxes.push({ x: rect.x, y: rect.y, w: rect.width, h: rect.height });
     }
 
-    boxes.sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y));
-    return boxes;
+    const merged = mergeOverlappingBoxes(boxes);
+    merged.sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y));
+    return merged;
   } finally {
     if (src) src.delete();
     if (gray) gray.delete();

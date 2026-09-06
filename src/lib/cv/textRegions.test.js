@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { decode } from 'fast-png';
-import { detectTextRegions } from './textRegions.js';
+import { detectTextRegions, mergeOverlappingBoxes } from './textRegions.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -89,5 +89,56 @@ describe('detectTextRegions', () => {
         `giant box covers >50% of image: ${JSON.stringify(b)}`
       );
     }
+  });
+
+  it('merges split fragments of one line instead of returning shards', async () => {
+    const { data, width, height } = await loadPhoto('image1.png');
+    const boxes = await detectTextRegions({ data, width, height });
+    // Baseline without merging was 44 boxes, mostly split shards and
+    // nested duplicates on the nutrition table and mascot.
+    assert.ok(boxes.length < 44, `expected fewer than baseline 44, got ${boxes.length}`);
+  });
+
+  it('reduces fragment count on dense Devanagari without losing lines', async () => {
+    const { data, width, height } = await loadPhoto('image4.png');
+    const boxes = await detectTextRegions({ data, width, height });
+    // Baseline without merging was 52 boxes.
+    assert.ok(boxes.length < 52, `expected fewer than baseline 52, got ${boxes.length}`);
+    assert.ok(boxes.length >= 10, `expected text lines to survive, got ${boxes.length}`);
+  });
+});
+
+describe('mergeOverlappingBoxes', () => {
+  it('unions two overlapping boxes', () => {
+    const out = mergeOverlappingBoxes([
+      { x: 0, y: 0, w: 100, h: 20 },
+      { x: 60, y: 0, w: 100, h: 20 },
+    ]);
+    assert.deepEqual(out, [{ x: 0, y: 0, w: 160, h: 20 }]);
+  });
+
+  it('keeps disjoint boxes apart', () => {
+    const boxes = [
+      { x: 0, y: 0, w: 50, h: 20 },
+      { x: 200, y: 100, w: 50, h: 20 },
+    ];
+    assert.deepEqual(mergeOverlappingBoxes(boxes), boxes);
+  });
+
+  it('absorbs a contained box into its parent', () => {
+    const out = mergeOverlappingBoxes([
+      { x: 0, y: 0, w: 100, h: 100 },
+      { x: 20, y: 20, w: 10, h: 10 },
+    ]);
+    assert.deepEqual(out, [{ x: 0, y: 0, w: 100, h: 100 }]);
+  });
+
+  it('merges transitively through a chain', () => {
+    const out = mergeOverlappingBoxes([
+      { x: 0, y: 0, w: 60, h: 20 },
+      { x: 40, y: 0, w: 60, h: 20 },
+      { x: 80, y: 0, w: 60, h: 20 },
+    ]);
+    assert.deepEqual(out, [{ x: 0, y: 0, w: 140, h: 20 }]);
   });
 });
