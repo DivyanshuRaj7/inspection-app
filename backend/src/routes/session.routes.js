@@ -1,0 +1,14 @@
+const express = require('express');
+const router = express.Router();
+const sessionController = require('../controllers/session.controller');
+const authenticate = require('../middleware/authenticate');
+const authorize = require('../middleware/authorize');
+const asyncHandler = require('../utils/asyncHandler');
+
+router.use(authenticate, authorize('INSPECTOR'));
+
+router.post('/', asyncHandler(sessionController.createSession));
+router.get('/:id', asyncHandler(sessionController.getSession));
+router.patch('/:id/close', asyncHandler(sessionController.closeSession));
+
+module.exports = router;

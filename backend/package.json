@@ -1,0 +1,29 @@
+{
+  "name": "compliance-scanner-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Compliance Scanner",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --passWithNoTests",
+    "migrate": "node db/migrations/run-migrations.js",
+    "seed": "node db/seeds/run-seeds.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.3",
+    "uuid": "^9.0.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.1",
+    "pg-mem": "^3.0.14",
+    "supertest": "^6.3.3"
+  }
+}
