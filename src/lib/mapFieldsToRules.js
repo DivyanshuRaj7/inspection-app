@@ -93,6 +93,55 @@ export function attachRegionBoxes(regions, imageSize = null) {
   return fields;
 }
 
+/**
+ * Adapts the boxed-fields array into the rule engine's dict shape:
+ * `{ FIELD_NAME: { text, confidence, region, boundingBox, fontSizeMm } }`,
+ * which is what `ruleInterpreter.js` looks up via `extractedData[rule.field]`.
+ * Not wired into checkImage() yet — converter only.
+ *
+ * Policies:
+ * - Duplicates: highest confidence wins (null counts as lowest); each
+ *   dropped duplicate is reported via `onDuplicate` (defaults to
+ *   console.warn) so promotion fights stay visible.
+ * - Confidence: CV 0-100 → RE 0-1 (`/ 100`); null stays null, never zero.
+ * - `fontSizeMm` is always null for now: no DPI/reference object is
+ *   measured, and inventing one would dress up a guess. The key exists
+ *   because the font-size checker expects it.
+ * - Guards: null/non-object entries, null fieldGuesses, and entries with
+ *   no usable boundingBox are skipped; text is coerced with String().
+ *
+ * @param {Array<{ fieldGuess: string, text: string, confidence: number | null, boundingBox: object, region: string }>} fieldsArray
+ * @param {{ onDuplicate?: (message: string) => void }} [options]
+ * @returns {Record<string, { text: string, confidence: number | null, region: string, boundingBox: object, fontSizeMm: null }>}
+ */
+export function fieldsArrayToExtracted(fieldsArray, { onDuplicate = (msg) => console.warn(msg) } = {}) {
+  const extracted = {};
+  const bestScore = {};
+  const scoreOf = (confidence) => (typeof confidence === 'number' ? confidence : -1);
+  for (const entry of fieldsArray || []) {
+    if (!entry || typeof entry !== 'object') continue;
+    const { fieldGuess, text, confidence, boundingBox, region } = entry;
+    if (typeof fieldGuess !== 'string' || !fieldGuess) continue;
+    if (!boundingBox || typeof boundingBox !== 'object') continue;
+    if (extracted[fieldGuess]) {
+      if (scoreOf(confidence) <= bestScore[fieldGuess]) {
+        onDuplicate(`fieldsArrayToExtracted: duplicate ${fieldGuess} dropped (kept higher-confidence entry)`);
+        continue;
+      }
+      onDuplicate(`fieldsArrayToExtracted: duplicate ${fieldGuess} replaced by higher-confidence entry`);
+    }
+    bestScore[fieldGuess] = scoreOf(confidence);
+    extracted[fieldGuess] = {
+      text: String(text ?? ''),
+      confidence: typeof confidence === 'number' ? confidence / 100 : null,
+      region,
+      boundingBox: { ...boundingBox },
+      fontSizeMm: null,
+    };
+  }
+  return extracted;
+}
+
 export function mapFieldsToRules(ocrText, wholeImageConfidence, isImported = false) {
   const lines = (ocrText || '').split('\n').map((l) => l.trim()).filter(Boolean);
   const confidence = (wholeImageConfidence || 0) / 100; // RE expects 0-1, CV gives 0-100

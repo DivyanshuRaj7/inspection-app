@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyRegionText, attachRegionBoxes, zoneForBox } from './mapFieldsToRules.js';
+import { classifyRegionText, attachRegionBoxes, zoneForBox, fieldsArrayToExtracted } from './mapFieldsToRules.js';
 
 describe('classifyRegionText', () => {
   it('maps an MRP line to the MRP field', () => {
@@ -114,5 +114,70 @@ describe('attachRegionBoxes', () => {
         region: 'footer',
       }]
     );
+  });
+});
+
+describe('fieldsArrayToExtracted', () => {
+  const mrpBox = { x: 669, y: 534, w: 275, h: 69 };
+  const mfrBox = { x: 666, y: 419, w: 205, h: 74 };
+  const noop = () => {};
+
+  it('converts the array into a dict keyed by field name', () => {
+    assert.deepEqual(
+      fieldsArrayToExtracted(
+        [
+          { fieldGuess: 'MRP', text: 'MRP Rs 120', confidence: 70, boundingBox: mrpBox, region: 'footer' },
+          { fieldGuess: 'MANUFACTURER_ADDRESS', text: 'Mfd by SNEHA', confidence: 81, boundingBox: mfrBox, region: 'footer' },
+        ],
+        { onDuplicate: noop }
+      ),
+      {
+        MRP: { text: 'MRP Rs 120', confidence: 0.7, region: 'footer', boundingBox: mrpBox, fontSizeMm: null },
+        MANUFACTURER_ADDRESS: { text: 'Mfd by SNEHA', confidence: 0.81, region: 'footer', boundingBox: mfrBox, fontSizeMm: null },
+      }
+    );
+  });
+
+  it('keeps the highest-confidence entry on duplicate fields and reports it', () => {
+    const calls = [];
+    const out = fieldsArrayToExtracted(
+      [
+        { fieldGuess: 'MRP', text: 'MRP Rs 120', confidence: 70, boundingBox: mrpBox, region: 'footer' },
+        { fieldGuess: 'MRP', text: 'MRP Rs 125', confidence: 90, boundingBox: mrpBox, region: 'footer' },
+      ],
+      { onDuplicate: (msg) => calls.push(msg) }
+    );
+    assert.equal(out.MRP.text, 'MRP Rs 125');
+    assert.equal(out.MRP.confidence, 0.9);
+    assert.equal(calls.length, 1);
+  });
+
+  it('keeps null confidence as null instead of converting to zero', () => {
+    const out = fieldsArrayToExtracted(
+      [{ fieldGuess: 'MRP', text: 'MRP Rs 120', confidence: null, boundingBox: mrpBox, region: 'footer' }],
+      { onDuplicate: noop }
+    );
+    assert.equal(out.MRP.confidence, null);
+  });
+
+  it('skips malformed and null entries instead of crashing, and coerces text', () => {
+    const out = fieldsArrayToExtracted(
+      [
+        null,
+        undefined,
+        'not-an-entry',
+        { fieldGuess: null, text: 'junk', confidence: 50, boundingBox: mrpBox, region: 'footer' },
+        { fieldGuess: 'MRP', text: 120, confidence: 70, boundingBox: mrpBox, region: 'footer' },
+        { fieldGuess: 'MRP', text: 'no box here', confidence: 70, region: 'footer' },
+      ],
+      { onDuplicate: noop }
+    );
+    assert.deepEqual(Object.keys(out), ['MRP']);
+    assert.equal(out.MRP.text, '120');
+  });
+
+  it('returns an empty dict for empty or missing input', () => {
+    assert.deepEqual(fieldsArrayToExtracted([], { onDuplicate: noop }), {});
+    assert.deepEqual(fieldsArrayToExtracted(null, { onDuplicate: noop }), {});
   });
 });
