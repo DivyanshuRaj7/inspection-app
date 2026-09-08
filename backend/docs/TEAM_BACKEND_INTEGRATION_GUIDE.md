@@ -192,6 +192,9 @@ These endpoints are restricted to managerial roles for analytics.
 | `POST` | `/api/v1/inspections/:id/submit`| PWA | INSPECTOR, ADMIN | Submit for review. Strictly requires `server_version`. |
 | `POST` | `/api/v1/inspections/:id/compliance-result` | Rule Engine | ADMIN | Attach engine verdict. Validates version match. |
 | `GET` | `/api/v1/inspections/:id/report-data` | Doc Gen | INSP, OFF, ADMIN | Aggregated, flat JSON payload for PDF templating. |
+| `POST`| `/api/v1/sessions` | PWA | INSPECTOR | Initialize scanning session with visit_number, shop_number, GPS. |
+| `GET` | `/api/v1/sessions/:id` | PWA | INSPECTOR | Get session details. Inspector ownership enforced. |
+| `PATCH`| `/api/v1/sessions/:id/close` | PWA | INSPECTOR | Close session. Sets end_time. Inspector ownership enforced. |
 | `GET` | `/api/v1/dashboard/summary` | Dashboard | OFFICIAL, ADMIN | Summary analytics for Officials. |
 
 ---

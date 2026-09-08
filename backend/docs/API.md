@@ -29,6 +29,11 @@ Authenticated endpoints require a valid JWT passed in the header: `Authorization
 - `POST /inspections/:id/compliance-result` : Attach Rule Engine result to inspection. (Requires ADMIN or Internal Service Role)
 - `GET /inspections/:id/report-data` : Retrieve formatted data for Document Generation. (Requires Auth)
 
+## Sessions
+- `POST /sessions` : Initialize an active field inspection session. Accepts optional `visit_number` (max 50 chars), `shop_number` (max 50 chars), `gps_lat` (-90 to 90), and `gps_lng` (-180 to 180). (Requires INSPECTOR)
+- `GET /sessions/:id` : Retrieve session status, timestamps, and visit metadata. (Requires INSPECTOR ownership)
+- `PATCH /sessions/:id/close` : Gracefully close an active inspection session. (Requires INSPECTOR ownership)
+
 ## Dashboard
 - `GET /dashboard/summary` : Dashboard summary stats. (Requires OFFICIAL or ADMIN)
 - `GET /dashboard/violations` : Dashboard violation stats. (Requires OFFICIAL or ADMIN)

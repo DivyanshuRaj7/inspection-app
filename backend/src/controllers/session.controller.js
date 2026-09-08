@@ -3,12 +3,19 @@ const { success, error } = require('../utils/apiResponse');
 
 exports.createSession = async (req, res) => {
   const inspectorId = req.user.sub;
+  const { visit_number, shop_number, gps_lat, gps_lng } = req.body;
 
   const result = await pool.query(`
-    INSERT INTO sessions (inspector_id, status)
-    VALUES ($1, 'OPEN')
-    RETURNING id, start_time, status
-  `, [inspectorId]);
+    INSERT INTO sessions (inspector_id, status, visit_number, shop_number, gps_lat, gps_lng)
+    VALUES ($1, 'OPEN', $2, $3, $4, $5)
+    RETURNING id, start_time, status, visit_number, shop_number, gps_lat, gps_lng
+  `, [
+    inspectorId, 
+    visit_number !== undefined ? visit_number : null, 
+    shop_number !== undefined ? shop_number : null, 
+    gps_lat !== undefined ? gps_lat : null, 
+    gps_lng !== undefined ? gps_lng : null
+  ]);
 
   res.status(201).json(success(result.rows[0]));
 };

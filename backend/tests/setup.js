@@ -41,6 +41,7 @@ runMigration('001_init.sql');
 runMigration('002_sessions.sql');
 runMigration('003_products.sql');
 runMigration('004_inspections_updates.sql');
+runMigration('005_session_visit_data.sql');
 
 // Use synchronous bcrypt hash so seeds complete before tests
 const hash = bcrypt.hashSync('password123', 1);
