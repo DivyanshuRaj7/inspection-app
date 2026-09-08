@@ -6,13 +6,157 @@
 // which are explicitly [SKIP] for R1/R2).
 
 const FIELD_SYNONYMS = {
-  MANUFACTURER_ADDRESS: ['manufactured by', 'marketed by', 'mfd by', 'packed by'],
-  COMMODITY_NAME: [], // usually the product's own brand/title text — weakest signal, R1 best-effort only
-  NET_QUANTITY: ['net qty', 'net wt', 'net weight', 'net volume', 'net quantity'],
-  MANUFACTURE_DATE: ['mfg', 'mfd', 'mig', 'packed on', 'date of manufacture'],
-  MRP: ['mrp', 'm.r.p', 'maximum retail price', 'max retail price'],
-  CONSUMER_CARE: ['customer care', 'consumer care', 'for complaints', 'helpline'],
-  COUNTRY_OF_ORIGIN: ['country of origin', 'made in', 'origin'],
+  MANUFACTURER_ADDRESS: [
+    // English
+    'manufactured by',
+    'marketed by',
+    'mfd by',
+    'packed by',
+
+    // Hindi
+    'निर्माता',
+    'द्वारा निर्मित',
+    'विपणनकर्ता',
+    'विपणन द्वारा',
+    'पैककर्ता',
+    'द्वारा पैक'
+  ],
+
+  COMMODITY_NAME: [
+    // Intentionally empty for now.
+    // Product/commodity name remains whole-text OCR
+    // best-effort and is not region-classified yet.
+  ],
+
+  NET_QUANTITY: [
+    // English
+    'net qty',
+    'net wt',
+    'net weight',
+    'net volume',
+    'net quantity',
+
+    // Hindi
+    'शुद्ध मात्रा',
+    'शुद्ध वजन',
+    'शुद्ध भार',
+    'शुद्ध आयतन'
+  ],
+
+  MANUFACTURE_DATE: [
+    // English
+    'mfg',
+    'mfd',
+    'mig',
+    'packed on',
+    'date of manufacture',
+
+    // Hindi
+    'निर्माण तिथि',
+    'निर्मित तिथि',
+    'निर्माण दिनांक',
+    'निर्मित दिनांक',
+    'पैकिंग तिथि',
+    'पैकिंग दिनांक',
+    'पैक किया गया'
+  ],
+
+  MRP: [
+    // English
+    'mrp',
+    'm.r.p',
+    'maximum retail price',
+    'max retail price',
+
+    // Hindi
+    'एमआरपी',
+    'एम.आर.पी',
+    'अधिकतम खुदरा मूल्य',
+    'अधिकतम खुदरा कीमत',
+    'अधिकतम विक्रय मूल्य'
+  ],
+
+  CONSUMER_CARE: [
+    // English
+    'customer care',
+    'consumer care',
+    'for complaints',
+    'helpline',
+
+    // Hindi
+    'ग्राहक सेवा',
+    'उपभोक्ता सेवा',
+    'शिकायत के लिए',
+    'शिकायत हेतु',
+    'शिकायत',
+    'हेल्पलाइन'
+  ],
+
+  COUNTRY_OF_ORIGIN: [
+    // English
+    'country of origin',
+    'made in',
+    'origin',
+
+    // Hindi
+    'मूल देश',
+    'उत्पत्ति का देश',
+    'मूल स्थान',
+    'उत्पत्ति',
+    'भारत में निर्मित',
+    'भारत में बना'
+  ],
+
+  UNIT_SALE_PRICE: [
+    // English
+    'unit sale price',
+    'unit price',
+    'usp',
+    'u.s.p',
+    'per g',
+    'per kg',
+    'per ml',
+    'per l',
+    'per piece',
+
+    // Hindi
+    'इकाई विक्रय मूल्य',
+    'यूनिट बिक्री मूल्य',
+    'प्रति ग्राम',
+    'प्रति किग्रा',
+    'प्रति लीटर'
+  ],
+
+  STANDARD_QUANTITY: [
+    // English
+    'standard size',
+    'standard pack',
+    'std pack',
+    'not a standard pack size',
+    'non standard size',
+
+    // Hindi
+    'मानक पैक',
+    'गैर-मानक'
+  ],
+
+  BATCH_NUMBER: [
+    // English
+    'batch no',
+    'batch number',
+    'batch',
+    'b.no',
+    'b. no',
+    'lot no',
+    'lot number',
+    'lot',
+
+    // Hindi
+    'बैच नं',
+    'बैच',
+    'लॉट नं',
+    'लॉट'
+  ],
 };
 
 /**

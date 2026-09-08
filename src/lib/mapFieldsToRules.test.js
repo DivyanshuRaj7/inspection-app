@@ -24,6 +24,27 @@ describe('classifyRegionText', () => {
     });
   });
 
+  it('maps unit sale price lines to UNIT_SALE_PRICE', () => {
+    assert.deepEqual(classifyRegionText('Unit Sale Price: ₹ 1.20 / g'), {
+      fieldGuess: 'UNIT_SALE_PRICE',
+      text: 'Unit Sale Price: ₹ 1.20 / g',
+    });
+  });
+
+  it('maps batch number lines to BATCH_NUMBER', () => {
+    assert.deepEqual(classifyRegionText('Batch No: BN-2026-99'), {
+      fieldGuess: 'BATCH_NUMBER',
+      text: 'Batch No: BN-2026-99',
+    });
+  });
+
+  it('maps standard quantity lines to STANDARD_QUANTITY', () => {
+    assert.deepEqual(classifyRegionText('Standard Pack 500g'), {
+      fieldGuess: 'STANDARD_QUANTITY',
+      text: 'Standard Pack 500g',
+    });
+  });
+
   it('rejects brand/graphic text with no field keyword as junk', () => {
     assert.deepEqual(classifyRegionText('SNEHA FARMS'), { fieldGuess: null, reason: 'no-keyword' });
     assert.deepEqual(classifyRegionText('Tender & Tasty'), { fieldGuess: null, reason: 'no-keyword' });

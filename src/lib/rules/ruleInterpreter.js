@@ -15,6 +15,7 @@ function checkCompliance(rules, extractedData) {
 
         results.push({
             rule_id: rule.rule_id,
+            description: rule.description,
             passed: result.passed,
             confidence: result.confidence,
             reason: result.reason,
@@ -41,10 +42,24 @@ function runCheck(rule, extractedData) {
 
         case "conditional_presence":
 
-            const conditionApplies =
-                rule.condition === "imported_product"
-                    ? extractedData.isImported
-                    : false;
+            let conditionApplies = false;
+            if (rule.condition === "imported_product") {
+                conditionApplies = Boolean(extractedData.isImported);
+            } else if (rule.condition === "unit_sale_price_applicable") {
+                conditionApplies = Boolean(
+                    extractedData.requiresUnitSalePrice ?? extractedData.isUnitSalePriceApplicable
+                );
+            } else if (rule.condition === "standard_pack_applicable") {
+                conditionApplies = Boolean(
+                    extractedData.isStandardSizeApplicable ?? extractedData.requiresStandardSize
+                );
+            } else if (rule.condition === "batch_applicable") {
+                conditionApplies = Boolean(
+                    extractedData.isBatchApplicable ?? extractedData.requiresBatchNumber
+                );
+            } else if (rule.condition && extractedData[rule.condition] !== undefined) {
+                conditionApplies = Boolean(extractedData[rule.condition]);
+            }
 
             return checkConditionalPresence(
                 extractedData[rule.field],

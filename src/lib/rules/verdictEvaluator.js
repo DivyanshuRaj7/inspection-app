@@ -28,6 +28,7 @@ function evaluateVerdict(results) {
 
             failures.push({
                 rule_id: result.rule_id,
+                description: result.description,
                 reason: result.reason,
                 severity: result.severity,
                 clause_citation: result.clause_citation,
