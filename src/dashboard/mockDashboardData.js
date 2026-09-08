@@ -407,6 +407,189 @@ export const RAW_SESSIONS = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Internal helpers (not exported — used by the query functions below)
+// ---------------------------------------------------------------------------
+
+// Every {item, session} pair, full objects — internal use only, for
+// aggregation logic that needs the real checkResult, not the light row shape.
+function allItemsFlat() {
+  const rows = [];
+  for (const session of RAW_SESSIONS) {
+    for (const item of session.items) rows.push({ item, session });
+  }
+  return rows;
+}
+
+// ERROR is its own tier, matching ItemResult.jsx's own distinct treatment of
+// the ERROR verdict — it must never be silently folded into NON_COMPLIANT or
+// dropped, since useSession.js's catch path produces real ERROR items with
+// no extractedFields and no totalRules at all.
+function itemSeverityTier(item) {
+  if (item.checkResult.verdict === 'ERROR') return 'errored';
+  const failures = item.checkResult.failures || [];
+  if (failures.some((f) => f.severity === 'substantive')) return 'substantive';
+  if (failures.some((f) => f.severity === 'cosmetic')) return 'cosmetic';
+  return 'compliant';
+}
+
+// Defensive: real ERROR items have no extractedFields at all.
+function productName(item) {
+  return item.checkResult?.extractedFields?.COMMODITY_NAME?.text || 'Unknown product';
+}
+
+// Public row shape shared by searchDashboard and getFilteredSessions.
+function toRow(item, session) {
+  return {
+    itemId: item.id,
+    sessionId: session.id,
+    visitNumber: session.visitNumber,
+    shopNumber: session.shopNumber,
+    inspectorId: session.createdBy,
+    inspectorName: inspectorName(session.createdBy),
+    verdict: item.checkResult.verdict,
+    productName: productName(item),
+    createdAt: item.createdAt,
+  };
+}
+
+function flattenItems() {
+  return allItemsFlat().map(({ item, session }) => toRow(item, session));
+}
+
+// ---------------------------------------------------------------------------
+// Exported query functions — the only things any dashboard screen should
+// ever call. Swapping to the real backend later means changing what's
+// *inside* these, never how a screen calls them.
+// ---------------------------------------------------------------------------
+
+export function getDashboardSummary() {
+  const rows = flattenItems();
+  return {
+    totalSessions: RAW_SESSIONS.length,
+    totalItemsInspected: rows.length,
+    compliant: rows.filter((r) => r.verdict === 'COMPLIANT').length,
+    compliantWithWarnings: rows.filter((r) => r.verdict === 'COMPLIANT_WITH_WARNINGS').length,
+    nonCompliant: rows.filter((r) => r.verdict === 'NON_COMPLIANT').length,
+    errored: rows.filter((r) => r.verdict === 'ERROR').length,
+    distinctShopsVisited: new Set(RAW_SESSIONS.map((s) => s.shopNumber)).size,
+    activeInspectors: new Set(RAW_SESSIONS.map((s) => s.createdBy)).size,
+  };
+}
+
+export function getViolationsByTier() {
+  let substantive = 0;
+  let cosmetic = 0;
+  for (const { item } of allItemsFlat()) {
+    for (const f of item.checkResult.failures || []) {
+      if (f.severity === 'substantive') substantive++;
+      else if (f.severity === 'cosmetic') cosmetic++;
+    }
+  }
+  return [
+    { tier: 'substantive', count: substantive },
+    { tier: 'cosmetic', count: cosmetic },
+  ];
+}
+
+export function getTrendingViolationTypes(windowDays = 30) {
+  const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000;
+  const typeCounts = new Map();
+  const dayBuckets = new Map();
+
+  for (const { item } of allItemsFlat()) {
+    const t = new Date(item.createdAt).getTime();
+    if (t < cutoff) continue;
+
+    const dateKey = item.createdAt.slice(0, 10);
+    if (!dayBuckets.has(dateKey)) {
+      dayBuckets.set(dateKey, { date: dateKey, totalInspections: 0, nonCompliant: 0 });
+    }
+    const bucket = dayBuckets.get(dateKey);
+    bucket.totalInspections += 1;
+    if (item.checkResult.verdict === 'NON_COMPLIANT') bucket.nonCompliant += 1;
+
+    for (const f of item.checkResult.failures || []) {
+      if (!typeCounts.has(f.rule_id)) {
+        typeCounts.set(f.rule_id, { ruleId: f.rule_id, description: f.reason, severity: f.severity, count: 0 });
+      }
+      typeCounts.get(f.rule_id).count += 1;
+    }
+  }
+
+  return {
+    windowDays,
+    byType: [...typeCounts.values()].sort((a, b) => b.count - a.count),
+    byDay: [...dayBuckets.values()].sort((a, b) => a.date.localeCompare(b.date)),
+  };
+}
+
+export function searchDashboard(query) {
+  const q = (query || '').trim().toLowerCase();
+  if (!q) return [];
+  return flattenItems().filter(
+    (row) =>
+      row.visitNumber.toLowerCase().includes(q) ||
+      row.shopNumber.toLowerCase().includes(q) ||
+      row.inspectorName.toLowerCase().includes(q) ||
+      row.productName.toLowerCase().includes(q),
+  );
+}
+
+export function getFilteredSessions({ dateFrom, dateTo, inspectorId, shop, severity } = {}) {
+  const fromTime = dateFrom ? new Date(dateFrom).getTime() : -Infinity;
+  const toTime = dateTo ? new Date(dateTo).getTime() : Infinity;
+
+  return allItemsFlat()
+    .filter(({ session }) => {
+      const t = new Date(session.startedAt).getTime();
+      return t >= fromTime && t <= toTime;
+    })
+    .filter(({ session }) => !inspectorId || session.createdBy === inspectorId)
+    .filter(({ session }) => !shop || session.shopNumber.toLowerCase().includes(shop.toLowerCase()))
+    .filter(({ item }) => !severity || itemSeverityTier(item) === severity)
+    .map(({ item, session }) => toRow(item, session));
+}
+
+export function getOfficerActivity() {
+  return MOCK_INSPECTORS.map((insp) => {
+    const sessions = RAW_SESSIONS.filter((s) => s.createdBy === insp.id);
+    const items = sessions.flatMap((s) => s.items);
+    let substantiveCount = 0;
+    let cosmeticCount = 0;
+    let erroredCount = 0;
+    for (const item of items) {
+      if (item.checkResult.verdict === 'ERROR') erroredCount++;
+      for (const f of item.checkResult.failures || []) {
+        if (f.severity === 'substantive') substantiveCount++;
+        else if (f.severity === 'cosmetic') cosmeticCount++;
+      }
+    }
+    return {
+      inspectorId: insp.id,
+      inspectorName: insp.name,
+      sessionsCount: sessions.length,
+      itemsInspected: items.length,
+      violationsFound: substantiveCount + cosmeticCount,
+      substantiveCount,
+      cosmeticCount,
+      erroredCount,
+    };
+  });
+}
+
+export function getSessionById(id) {
+  return RAW_SESSIONS.find((s) => s.id === id) || null;
+}
+
+export function getInspectionById(id) {
+  for (const session of RAW_SESSIONS) {
+    const item = session.items.find((i) => i.id === id);
+    if (item) return { item, session };
+  }
+  return null;
+}
+
 // Temporary export for Step 4.1a verification only — remove once 4.1b's
 // query functions are confirmed working against this data.
 export function _debugCounts() {
