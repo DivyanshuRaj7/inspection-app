@@ -3,15 +3,25 @@ import checkConditionalPresence from "./conditionalpresencechecker.js";
 import checkFormat from "./formatChecker.js";
 import checkFontSize from "./fontSizeChecker.js";
 import checkPlacement from "./placementchecker.js";
+import { buildDeclarations } from "../declarationsAggregator.js";
 
 
 function checkCompliance(rules, extractedData) {
 
     const results = [];
 
+    // DECLARATIONS is an aggregate, not an OCR field: build it from the
+    // resolved fields when the caller did not supply one, so the font-size
+    // and placement rules read the minimum-confidence / unanimous-region
+    // aggregate instead of undefined. A caller-supplied entry always wins.
+    const source = extractedData || {};
+    const data = source.DECLARATIONS === undefined
+        ? { ...source, DECLARATIONS: buildDeclarations(source) }
+        : source;
+
     for (const rule of rules) {
 
-        const result = runCheck(rule, extractedData);
+        const result = runCheck(rule, data);
 
         results.push({
             rule_id: rule.rule_id,

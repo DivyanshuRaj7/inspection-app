@@ -1,7 +1,6 @@
 import { qualityCheck, DEFAULT_BLUR_THRESHOLD, waitForOpenCV } from './qualityCheck.js';
 import { runOCR, terminateOCRWorker } from './ocr.js';
 import { cleanOcrText } from './cleanOcrText.js';
-import { attachRegionBoxes } from './textRegions.js';
 
 export async function checkImage(photo, options = {}) {
   const qcResult = await qualityCheck(photo, options);
