@@ -3,6 +3,7 @@ import { runOCR, recognizeRegions, terminateOCRWorker, OCR_LANGUAGES } from './o
 import { cleanOcrText } from './cleanOcrText.js';
 import { detectTextRegions } from './textRegions.js';
 import { attachRegionBoxes } from '../mapFieldsToRules.js';
+import { locateMRPZone } from './zones.js';
 
 /**
  * Tamper signal is a hardcoded stub: Phase 4 owns real tamper detection
@@ -26,13 +27,15 @@ export function assembleContractA({
   regions = [],
   imageSize = null,
 }) {
+  const fields = attachRegionBoxes(regions, imageSize);
   return {
     qualityCheck,
     ocrText,
     ocrRawText,
     confidence,
     language,
-    fields: attachRegionBoxes(regions, imageSize),
+    fields,
+    mrpZone: locateMRPZone(fields),
     tamperSignal: { ...TAMPER_SIGNAL_STUB },
   };
 }

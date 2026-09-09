@@ -54,6 +54,31 @@ describe('assembleContractA', () => {
           boundingBox: mrpBox,
           region: 'footer',
         }],
+        mrpZone: {
+          field: 'MRP',
+          primary: {
+            fieldGuess: 'MRP',
+            text: 'MRP Rs 120 (Incl. of all taxes)',
+            confidence: 70,
+            boundingBox: mrpBox,
+            region: 'footer',
+          },
+          candidates: [{
+            fieldGuess: 'MRP',
+            text: 'MRP Rs 120 (Incl. of all taxes)',
+            confidence: 70,
+            boundingBox: mrpBox,
+            region: 'footer',
+          }],
+          count: 1,
+          unionBox: { ...mrpBox },
+          tamperSurface: {
+            roi: { ...mrpBox },
+            text: 'MRP Rs 120 (Incl. of all taxes)',
+            confidence: 70,
+            region: 'footer',
+          },
+        },
         tamperSignal: { detected: false, confidence: 0, region: null },
       }
     );
@@ -70,6 +95,14 @@ describe('assembleContractA', () => {
     });
     assert.deepEqual(out.fields, []);
     assert.equal(out.ocrText, null);
+    assert.deepEqual(out.mrpZone, {
+      field: 'MRP',
+      primary: null,
+      candidates: [],
+      count: 0,
+      unionBox: null,
+      tamperSurface: { roi: null, text: null, confidence: null, region: null },
+    });
     assert.deepEqual(out.tamperSignal, TAMPER_SIGNAL_STUB);
   });
 
