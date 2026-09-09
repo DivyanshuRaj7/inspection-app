@@ -32,7 +32,8 @@ function evaluateVerdict(results) {
                 reason: result.reason,
                 severity: result.severity,
                 clause_citation: result.clause_citation,
-                confidence: result.confidence
+                confidence: result.confidence,
+                needsReview: result.needsReview
             });
         }
     }
@@ -60,12 +61,15 @@ function evaluateVerdict(results) {
         verdict = "COMPLIANT";
     }
 
+    const hasNeedsReview = results.some(r => r.needsReview);
+
     return {
         verdict: verdict,
         totalRules: results.length,
         passedRules: passedRules,
         failedRules: failedRules,
         skippedRules: skippedRules,
+        needsReview: hasNeedsReview,
         failures: failures
     };
 }
