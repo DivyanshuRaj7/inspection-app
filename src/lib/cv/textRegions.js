@@ -1,4 +1,4 @@
-import { waitForOpenCV } from './qualityCheck.js';
+import { waitForOpenCV, toCanvasElement } from './qualityCheck.js';
 
 /**
  * Merges boxes that substantially overlap (split line fragments, nested
@@ -65,7 +65,7 @@ export async function detectTextRegions(source, options = {}) {
   let contours = null;
   let hierarchy = null;
 
-  const toMat = () => {
+  const toMat = async () => {
     if (
       source &&
       typeof source === 'object' &&
@@ -81,11 +81,16 @@ export async function detectTextRegions(source, options = {}) {
         source.data
       );
     }
-    return cv.imread(source);
+    // Anything else (canvas, img element, element id, data URL, path)
+    // must be resolved to a canvas first: cv.imread() reads a bare string
+    // as an element id, so a data URL passed straight in dies with
+    // "Please input the valid canvas or img id."
+    const canvas = await toCanvasElement(source);
+    return cv.imread(canvas);
   };
 
   try {
-    src = toMat();
+    src = await toMat();
     const { minArea = Math.max(300, Math.round((src.cols * src.rows) / 1500)) } = options;
 
     gray = new cv.Mat();
