@@ -38,9 +38,19 @@ export function assembleContractA({
 }
 
 export async function checkImage(photo, options = {}) {
+  // Stage timers are console-only diagnostics for field timing runs
+  // (e.g. the airplane-mode phone test). They never enter the returned
+  // object — Contract A′ shape is unchanged.
+  const t0 = performance.now();
   const qcResult = await qualityCheck(photo, options);
+  const tQc = performance.now();
 
   if (!qcResult.pass) {
+    console.info('[checkImage:timings]', {
+      qualityCheckMs: Math.round(tQc - t0),
+      totalMs: Math.round(tQc - t0),
+      outcome: 'quality-fail',
+    });
     return assembleContractA({
       qualityCheck: qcResult,
       ocrText: null,
@@ -50,6 +60,7 @@ export async function checkImage(photo, options = {}) {
   }
 
   const ocrResult = await runOCR(photo, options); // v2 behavior: options forwarded through
+  const tOcr = performance.now();
   const ocrRawText = ocrResult.ocrText;
   // Cleaned text is what the inspector reads and what field mapping runs
   // on; the raw Tesseract output is kept alongside for the details view
@@ -57,7 +68,17 @@ export async function checkImage(photo, options = {}) {
   // the contract — Capture/useSession/ItemResult already depend on it.)
   const { cleanedText } = cleanOcrText(ocrRawText);
   const boxes = await detectTextRegions(photo, options);
+  const tDetect = performance.now();
   const { regions, imageSize } = await recognizeRegions(photo, boxes, options);
+  const tRegions = performance.now();
+  console.info('[checkImage:timings]', {
+    qualityCheckMs: Math.round(tQc - t0),
+    wholeOcrMs: Math.round(tOcr - tQc),
+    detectMs: Math.round(tDetect - tOcr),
+    regionsMs: Math.round(tRegions - tDetect),
+    regionCount: boxes.length,
+    totalMs: Math.round(tRegions - t0),
+  });
   return assembleContractA({
     qualityCheck: qcResult,
     ocrText: cleanedText,
