@@ -117,7 +117,6 @@ export async function detectTextRegions(source, options = {}) {
         source.data
       );
     }
-<<<<<<< Updated upstream
     // Anything else (canvas, img element, element id, data URL, path)
     // must be resolved to a canvas first: cv.imread() reads a bare string
     // as an element id, so a data URL passed straight in dies with
@@ -129,21 +128,6 @@ export async function detectTextRegions(source, options = {}) {
   try {
     src = await toMat();
     const { minArea = Math.max(300, Math.round((src.cols * src.rows) / 1500)) } = options;
-=======
-
-    return cv.imread(source);
-  };
-
-  try {
-    src = toMat();
-
-    const {
-      minArea = Math.max(
-        300,
-        Math.round((src.cols * src.rows) / 1500)
-      ),
-    } = options;
->>>>>>> Stashed changes
 
     gray = new cv.Mat();
 

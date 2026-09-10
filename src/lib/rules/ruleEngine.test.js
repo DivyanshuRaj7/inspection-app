@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 
 import { checkCompliance } from "./ruleInterpreter.js";
 import evaluateVerdict from "./verdictEvaluator.js";
+import  checkFormat from "./formatChecker.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -249,6 +250,98 @@ describe("Rule Engine - Compliance", () => {
         }
     );
 
+    // =====================================================
+// TEST 5
+// MRP FORMAT REGRESSION TESTS
+// =====================================================
+
+test("accepts real-world MRP declaration with inclusive tax wording", () => {
+    const result = checkFormat(
+        {
+            text: "MRP Rs 120 incl. of all taxes",
+            confidence: 0.95
+        },
+        "MRP"
+    );
+
+    expect(result.passed).toBe(true);
+    expect(result.reason).toBe("MRP format is valid");
+});
+
+test("accepts dotted MRP abbreviation and comma-formatted amount", () => {
+    const result = checkFormat(
+        {
+            text: "M.R.P. ₹1,200",
+            confidence: 0.95
+        },
+        "MRP"
+    );
+
+    expect(result.passed).toBe(true);
+    expect(result.reason).toBe("MRP format is valid");
+});
+
+test("accepts colon after MRP label", () => {
+    const result = checkFormat(
+        {
+            text: "MRP: Rs 120",
+            confidence: 0.95
+        },
+        "MRP"
+    );
+
+    expect(result.passed).toBe(true);
+    expect(result.reason).toBe("MRP format is valid");
+    }
+);
+
+    // =====================================================
+// PHASE 5
+// CONFIDENCE BANDING
+// =====================================================
+
+test("marks result for review when confidence is below 80%", () => {
+    const result = runCompliance({
+        ...baseData,
+
+        MRP: {
+            text: "MRP ₹120",
+            confidence: 0.79
+        }
+    });
+
+    expect(result.needsReview).toBe(true);
+});
+
+
+test("does not mark result for review at exactly 80% confidence", () => {
+    const result = runCompliance({
+        ...baseData,
+
+        MRP: {
+            text: "MRP ₹120",
+            confidence: 0.80
+        }
+    });
+
+    expect(result.needsReview).toBe(false);
+});
+
+
+test("does not mark result for review above 80% confidence", () => {
+    const result = runCompliance({
+        ...baseData,
+
+        MRP: {
+            text: "MRP ₹120",
+            confidence: 0.95
+        }
+    });
+
+    expect(result.needsReview).toBe(false);
+    }
+);
+
         // =====================================================
     // TEST 5
     // UNIT SALE PRICE CONDITIONAL RULE
@@ -454,5 +547,55 @@ describe("Rule Engine - Compliance", () => {
         }
     );
 
+    test("ignores a rule that is not effective yet", () => {
+    const futureRule = {
+        ...ruleConfig.rules[0],
+        rule_id: "FUTURE_TEST_RULE",
+        effective_from: "2099-01-01"
+    };
+
+    const results = checkCompliance(
+        [...ruleConfig.rules, futureRule],
+        baseData
+    );
+
+    expect(
+        results.some(result => result.rule_id === "FUTURE_TEST_RULE")
+    ).toBe(false);
+});
+
+    test("ignores a rule that has already expired", () => {
+    const expiredRule = {
+        ...ruleConfig.rules[0],
+        rule_id: "EXPIRED_TEST_RULE",
+        effective_to: "2000-01-01"
+    };
+
+    const results = checkCompliance(
+        [...ruleConfig.rules, expiredRule],
+        baseData
+    );
+
+    expect(
+        results.some(result => result.rule_id === "EXPIRED_TEST_RULE")
+    ).toBe(false);
+});
+
+    test("fails when manufacturer address is missing", () => {
+    const result = runCompliance({
+        ...baseData,
+
+        MANUFACTURER_ADDRESS: {
+            text: "",
+            confidence: 0.90
+        }
+    });
+
+    expect(result.verdict).toBe("NON_COMPLIANT");
+    expect(result.failures).toHaveLength(1);
+    expect(result.failures[0].rule_id).toBe(
+        "MANUFACTURER_ADDRESS_PRESENCE"
+    );
+});
 
 });

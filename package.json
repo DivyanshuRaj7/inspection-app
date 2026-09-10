@@ -8,7 +8,7 @@
   "build": "vite build",
   "lint": "oxlint",
   "test": "node --test src/lib/cv/*.test.js src/lib/*.test.js",
-  "test:rules": "vitest run src/lib/rules/ruleEngine.test.js",
+  "test:rules": "vitest run src/lib/rules",
   "preview": "vite preview"
   },
   "dependencies": {

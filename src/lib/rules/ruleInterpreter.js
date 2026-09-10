@@ -111,3 +111,87 @@ function runCheck(rule, extractedData) {
                     extractedData.unit_sale_price_applicable ??
                     extractedData.requiresUnitSalePrice ??
                     extractedData.isUnitSalePriceApplicable
+                );
+
+            }
+
+
+            else if (rule.condition === "standard_pack_applicable") {
+
+                conditionApplies = Boolean(
+                    extractedData.standard_pack_applicable ??
+                    extractedData.isStandardSizeApplicable ??
+                    extractedData.requiresStandardSize
+                );
+
+            }
+
+
+            else if (rule.condition === "batch_applicable") {
+
+                conditionApplies = Boolean(
+                    extractedData.batch_applicable ??
+                    extractedData.isBatchApplicable ??
+                    extractedData.requiresBatchNumber
+                );
+
+            }
+
+
+            else if (
+                rule.condition &&
+                extractedData[rule.condition] !== undefined
+            ) {
+
+                conditionApplies = Boolean(
+                    extractedData[rule.condition]
+                );
+
+            }
+
+
+            return checkConditionalPresence(
+                extractedData[rule.field],
+                conditionApplies
+            );
+        }
+
+
+        case "format":
+
+            return checkFormat(
+                extractedData[rule.field],
+                rule.format_type
+            );
+
+
+        case "font_size":
+
+            return checkFontSize(
+                extractedData[rule.field],
+                rule.minimum_mm
+            );
+
+
+        case "placement":
+
+            return checkPlacement(
+                extractedData[rule.field],
+                rule.expected_region
+            );
+
+
+        default:
+
+            return {
+                passed: false,
+                confidence: 0,
+                reason: "Unsupported check type",
+                skipped: false,
+                error: "Unsupported check type"
+            };
+    }
+}
+
+
+export { checkCompliance };
