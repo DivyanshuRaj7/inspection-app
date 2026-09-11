@@ -174,12 +174,23 @@ export const FIELD_DEFINITIONS = [
     maxLines: 1,
     noiseTokens: ['date', 'of', 'mfg', 'pkd', 'तिथि', 'दिनांक'],
     aliases: [
+      'date of manufacture:',
       'date of manufacture',
+      'date of manufacturing:',
       'date of manufacturing',
+      'date of packaging:',
       'date of packaging',
+      'date of packing:',
       'date of packing',
+      'date of import:',
       'date of import',
+      'date of mfg:',
+      'date of mfg.',
       'date of mfg',
+      'date of mfd:',
+      'date of mfd.',
+      'date of mfd',
+      'date of pkd:',
       'date of pkd',
       'packing date',
       'packaging date',
@@ -189,6 +200,8 @@ export const FIELD_DEFINITIONS = [
       'when packed',
       'packed on',
       'pkd on',
+      'packed:',
+      'packing:',
       'mfg date',
       'mfd date',
       'mfg. date',
@@ -206,7 +219,41 @@ export const FIELD_DEFINITIONS = [
       'mfd. dt',
       'mfg-date',
       'mfd-date',
+      'mfg/pkd',
+      'mfg / pkd',
+      'mfg/mfd',
+      'mfg / mfd',
+      'mfg:',
+      'mfd:',
+      'pkd:',
+      'pkg:',
+      'dom:',
+      'dom',
+      'd.o.m:',
+      'd.o.m',
+      'dop:',
+      'dop',
+      'd.o.p:',
+      'd.o.p',
+      'm.f.g.',
+      'm.f.g',
       // OCR misread variants
+      'mtg. date',
+      'mtg.date',
+      'mtg date',
+      'mtg.',
+      'mtg',
+      'mfe. date',
+      'mfe date',
+      'mfe.',
+      'mfe',
+      'mfa. date',
+      'mfa date',
+      'mfs. date',
+      'mfg. dale',
+      'mfd. dale',
+      'mfg. oate',
+      'mfd. oate',
       'mig. date',
       'mig.date',
       'mig date',
@@ -775,8 +822,14 @@ export function cleanLineNoise(str) {
     .trim();
 }
 
+export const PURE_DATE_RE = /\b(?:\d{4}[\s/.-]+\d{1,2}[\s/.-]+\d{1,2}|\d{1,2}[\s/.-]+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[a-z]*[\s/.-]+\d{2,4}|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[a-z]*[\s/.-]+\d{2,4}|\d{1,2}[\s/.-]+\d{1,2}[\s/.-]+\d{2,4}|\d{1,2}[\s/.-]+\d{2,4})\b/i;
+
 function cleanDateNoise(str) {
   if (!str) return '';
+  const match = str.match(PURE_DATE_RE);
+  if (match) {
+    return match[0].trim();
+  }
   return str
     .replace(/^[|!~§[\]‘'":;,\s<>&»«*#]+|[|!~§[\]‘'":;,\s<>&»«*#]+$/g, '')
     .replace(/\s+[|].*$/, '')
@@ -1061,26 +1114,45 @@ export function extractFields(ocrText, options = {}) {
   }
 
   // Stage 7: Regex fallback for MANUFACTURE_DATE when label detection missed it
-  // Catches OCR-garbled labels like "Mig, Bate:" or lines where only the date
-  // pattern survives (e.g. "13 June 2025", "06/2025", "JUN 2025").
+  // Catches OCR-garbled labels like "Mig, Bate:", "Mtg. Date", "DOM", or lines
+  // where label and date are split across lines or date pattern survives.
   if (!extracted.MANUFACTURE_DATE) {
-    const MFG_DATE_RE = /(?:mf[gd]|mig|mfq|pkd|pkg)\.?\s*,?\s*(?:d(?:a|e)?te?|dt)?\.?\s*[:.]?\s*(\d{1,2}[\s/.-]+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s/.-]+\d{2,4}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s/.-]+\d{2,4}|\d{1,2}[\s/.-]+\d{1,2}[\s/.-]+\d{2,4})/i;
-    for (const item of normalizedLines) {
+    const MFG_DATE_RE = /(?:mf[gd]|mig|mtg|mfe|mfa|mfs|mfq|pkd|pkg|dom|dop|d\.o\.m|d\.o\.p|date\s*of\s*(?:mfg|mfd|pkd|manufacture|packing)|packed\s*on|pkd\s*on|packed|packing)\.?\s*,?\s*(?:d(?:a|e)?te?|dt)?\.?\s*[:.]?\s*(\d{1,2}[\s/.-]+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s/.-]+\d{2,4}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s/.-]+\d{2,4}|\d{1,2}[\s/.-]+\d{1,2}[\s/.-]+\d{2,4}|\d{1,2}[\s/.-]+\d{2,4})?/i;
+    for (let idx = 0; idx < normalizedLines.length; idx++) {
+      const item = normalizedLines[idx];
       if (item.isBlank) continue;
       const m = item.text.match(MFG_DATE_RE);
-      if (m && m[1]) {
-        const dateVal = cleanDateNoise(m[1]);
-        if (dateVal && /\d/.test(dateVal)) {
-          extracted.MANUFACTURE_DATE = {
-            field: 'MANUFACTURE_DATE',
-            value: dateVal,
-            text: dateVal,
-            raw_label: m[0].slice(0, m[0].indexOf(m[1])).trim(),
-            matched_label: 'regex fallback',
-            source_text: item.raw,
-            confidence,
-          };
-          break;
+      if (m) {
+        let rawDateVal = m[1];
+        let dateSourceRaw = item.raw;
+        // If the label had no date on the same line, lookahead to next 1-2 non-blank lines
+        if (!rawDateVal) {
+          for (let look = idx + 1; look < Math.min(idx + 3, normalizedLines.length); look++) {
+            const nextItem = normalizedLines[look];
+            if (nextItem.isBlank) continue;
+            if (detectLabel(nextItem.text)) break;
+            const nextMatch = nextItem.text.match(PURE_DATE_RE);
+            if (nextMatch) {
+              rawDateVal = nextMatch[0];
+              dateSourceRaw = `${item.raw}\n${nextItem.raw}`;
+              break;
+            }
+          }
+        }
+        if (rawDateVal) {
+          const dateVal = cleanDateNoise(rawDateVal);
+          if (dateVal && /\d/.test(dateVal)) {
+            extracted.MANUFACTURE_DATE = {
+              field: 'MANUFACTURE_DATE',
+              value: dateVal,
+              text: dateVal,
+              raw_label: m[0].slice(0, m[1] ? m[0].indexOf(m[1]) : undefined).trim() || 'Mfg. Date:',
+              matched_label: 'regex fallback',
+              source_text: dateSourceRaw,
+              confidence,
+            };
+            break;
+          }
         }
       }
     }
@@ -1101,6 +1173,35 @@ export function extractFields(ocrText, options = {}) {
             text: dateVal,
             raw_label: m[0].slice(0, m[0].indexOf(m[1])).trim(),
             matched_label: 'regex fallback',
+            source_text: item.raw,
+            confidence,
+          };
+          break;
+        }
+      }
+    }
+  }
+
+  // Stage 8b: Date Disambiguation Fallback for MANUFACTURE_DATE
+  // If MANUFACTURE_DATE is still missing after Stage 7 and 8, search for any valid
+  // date pattern on the label. Under Legal Metrology Rule 6(1)(d), any date on a prepackaged
+  // food label that is not the expiry date represents the date of manufacture / packing.
+  if (!extracted.MANUFACTURE_DATE) {
+    for (const item of normalizedLines) {
+      if (item.isBlank) continue;
+      // Skip lines that explicitly indicate expiry or best before
+      if (/(?:exp|expiry|best\s*before|use\s*by|shelf\s*life)/i.test(item.text)) continue;
+      const dateMatch = item.text.match(PURE_DATE_RE);
+      if (dateMatch) {
+        const candidate = cleanDateNoise(dateMatch[0]);
+        // Must not be the already-extracted expiry date
+        if (candidate && /\d/.test(candidate) && candidate !== extracted.EXPIRY_DATE?.value) {
+          extracted.MANUFACTURE_DATE = {
+            field: 'MANUFACTURE_DATE',
+            value: candidate,
+            text: candidate,
+            raw_label: '',
+            matched_label: 'date disambiguation fallback',
             source_text: item.raw,
             confidence,
           };
