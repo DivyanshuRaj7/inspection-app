@@ -18,6 +18,9 @@ export const FIELD_DEFINITIONS = [
       'manufactured and packed by',
       'marketed and distributed by',
       'marketed & distributed by',
+      'manufactured in india by',
+      'manufactured in india',
+      'manufactured in',
       'manufactured by',
       'marketed by',
       'produced by',
@@ -25,6 +28,12 @@ export const FIELD_DEFINITIONS = [
       'packed by',
       'pkd by',
       'pkd. by',
+      'mfd. in india by',
+      'mfd in india by',
+      'mfd. in india',
+      'mfd in india',
+      'mfd. in',
+      'mfd in',
       'mfd by',
       'mfd. by',
       'mfg by',
@@ -36,6 +45,16 @@ export const FIELD_DEFINITIONS = [
       'manufacturer',
       'mfg address',
       'mfg. address',
+      'address line 1',
+      'address line 2',
+      'address line',
+      'regd. office',
+      'registered office',
+      'factory address',
+      'unit address',
+      'office address',
+      'address:',
+      'address',
       // Hindi
       'द्वारा निर्मित और विपणन',
       'निर्माता और विपणनकर्ता',
@@ -45,6 +64,8 @@ export const FIELD_DEFINITIONS = [
       'निर्माता',
       'विपणनकर्ता',
       'पैककर्ता',
+      'पता:',
+      'पता',
     ],
   },
   {
@@ -76,6 +97,38 @@ export const FIELD_DEFINITIONS = [
       'helpline',
       'feedback/complaints',
       'consumer feedback',
+      'contact details',
+      'contact number',
+      'contact info',
+      'customer support',
+      'contact us:',
+      'contact us',
+      'contact no:',
+      'contact no.',
+      'contact no',
+      'contact:',
+      'contact',
+      'call us:',
+      'call us',
+      'tel no:',
+      'tel no.',
+      'tel no',
+      'tel:',
+      'tel.',
+      'phone no:',
+      'phone no.',
+      'phone no',
+      'phone:',
+      'email id:',
+      'email id',
+      'e-mail id:',
+      'e-mail id',
+      'email:',
+      'email',
+      'e-mail:',
+      'e-mail',
+      'ontact:',
+      'ontact',
       // Hindi
       'उपभोक्ता सेवा',
       'ग्राहक सेवा',
@@ -83,6 +136,10 @@ export const FIELD_DEFINITIONS = [
       'शिकायत हेतु',
       'शिकायत',
       'हेल्पलाइन',
+      'संपर्क:',
+      'संपर्क',
+      'फोन:',
+      'फोन',
     ],
   },
   {
@@ -98,6 +155,12 @@ export const FIELD_DEFINITIONS = [
       'date of import',
       'date of mfg',
       'date of pkd',
+      'packing date',
+      'packaging date',
+      'packed date',
+      'pkg date',
+      'pkg. date',
+      'when packed',
       'packed on',
       'pkd on',
       'mfg date',
@@ -106,6 +169,8 @@ export const FIELD_DEFINITIONS = [
       'mfd. date',
       'pkd date',
       'pkd. date',
+      'mfg dt',
+      'mfd dt',
       'mfg.',
       'mfd.',
       'mfg',
@@ -116,10 +181,12 @@ export const FIELD_DEFINITIONS = [
       'निर्माण दिनांक',
       'निर्मित दिनांक',
       'पैकिंग दिनांक',
+      'पैकिंग की तारीख',
       'निर्माण तिथि',
       'निर्मित तिथि',
       'पैकिंग तिथि',
       'पैक किया गया',
+      'महीना और वर्ष',
     ],
   },
   {
@@ -181,14 +248,25 @@ export const FIELD_DEFINITIONS = [
     maxLines: 1,
     noiseTokens: ['qty', 'wt', 'weight', 'quantity', 'volume', 'मात्रा', 'वजन'],
     aliases: [
+      'net quantity:',
       'net quantity',
+      'net volume:',
       'net volume',
+      'net weight:',
       'net weight',
+      'net content:',
       'net content',
+      'net contents:',
       'net contents',
+      'net qty:',
       'net qty',
+      'net wt.:',
       'net wt.',
+      'net wt:',
       'net wt',
+      'net mass',
+      'weight:',
+      'quantity:',
       // Hindi
       'शुद्ध मात्रा',
       'शुद्ध वजन',
@@ -249,24 +327,40 @@ export const FIELD_DEFINITIONS = [
     maxLines: 1,
     noiseTokens: ['number', 'no', 'batch', 'lot', 'नं'],
     aliases: [
+      'batch number:',
       'batch number',
+      'batch no.:',
       'batch no.',
+      'batch no:',
       'batch no',
+      'lot number:',
       'lot number',
+      'lot no.:',
       'lot no.',
+      'lot no:',
       'lot no',
+      'b. no.:',
       'b. no.',
-      'b.no.',
+      'b. no:',
       'b. no',
+      'b.no.:',
+      'b.no.',
+      'b.no:',
       'b.no',
+      'batch:',
       'batch',
+      'lot:',
       'lot',
       // Hindi
+      'बैच नं.:',
       'बैच नं.',
       'बैच नं',
+      'लॉट नं.:',
       'लॉट नं.',
       'लॉट नं',
+      'बैच:',
       'बैच',
+      'लॉट:',
       'लॉट',
     ],
   },
@@ -294,11 +388,23 @@ export const FIELD_DEFINITIONS = [
     maxLines: 1,
     noiseTokens: ['name', 'product', 'commodity'],
     aliases: [
+      'common name of flavour',
+      'common name of flavor',
+      'common name of product',
+      'common name',
+      'name of the commodity',
       'name of commodity',
-      'generic name',
+      'name of the product',
+      'name of product',
       'commodity name',
       'product name',
+      'generic name',
+      'commodity:',
       'commodity',
+      'product:',
+      'product',
+      'item:',
+      'item',
       // Hindi
       'वस्तु का नाम',
       'उत्पाद का नाम',
@@ -585,7 +691,35 @@ export function extractFields(ocrText, options = {}) {
   }
 
   // Stage 1: Line Normalization & Analysis
-  const rawLines = ocrText.split(/\r?\n/);
+  const rawLines = [];
+  for (const raw of ocrText.split(/\r?\n/)) {
+    let rem = raw;
+    const segs = [];
+    while (rem.length > 0) {
+      const m1 = detectLabel(rem);
+      if (!m1) {
+        segs.push(rem);
+        break;
+      }
+      const after = m1.matchIndex + m1.matchLength + 1;
+      if (after >= rem.length) {
+        segs.push(rem);
+        break;
+      }
+      const sub = rem.slice(after);
+      const m2 = detectLabel(sub);
+      if (m2 && m2.matchIndex > 0) {
+        const splitAt = after + m2.matchIndex;
+        segs.push(rem.slice(0, splitAt).trim());
+        rem = rem.slice(splitAt).trim();
+      } else {
+        segs.push(rem);
+        break;
+      }
+    }
+    rawLines.push(...segs.filter(Boolean));
+  }
+
   const normalizedLines = rawLines.map((raw, idx) => ({
     idx,
     raw,
@@ -721,6 +855,36 @@ export function extractFields(ocrText, options = {}) {
 
     // Advance index past any consumed subsequent lines
     i = Math.max(i + 1, nextIdx);
+  }
+
+  // Stage 6: Prominent product title fallback for COMMODITY_NAME
+  if (!extracted.COMMODITY_NAME) {
+    for (const item of normalizedLines) {
+      if (item.isBlank) continue;
+      if (detectLabel(item.text)) break;
+      const clean = item.text.replace(/^[:\-\s.,;]+|[:\-\s.,;]+$/g, '').trim();
+      const words = clean.split(/\s+/);
+      if (
+        words.length >= 1 &&
+        words.length <= 6 &&
+        clean.length >= 3 &&
+        clean.length <= 50 &&
+        !/\d{3,}/.test(clean) &&
+        !/(?:ingredients|nutrition|facts|serving|barcode|table|panel|licence|license|evidence|photos)/i.test(clean) &&
+        /^[\p{L}\s.&'-]+$/u.test(clean)
+      ) {
+        extracted.COMMODITY_NAME = {
+          field: 'COMMODITY_NAME',
+          value: clean,
+          text: clean,
+          raw_label: '',
+          matched_label: 'product title',
+          source_text: item.raw,
+          confidence,
+        };
+        break;
+      }
+    }
   }
 
   extracted.isImported = isImported;

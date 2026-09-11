@@ -5,9 +5,16 @@ const FIELD_SYNONYMS = {
   MANUFACTURER_ADDRESS: [
     // English
     'manufactured by',
+    'manufactured in',
     'marketed by',
     'mfd by',
+    'mfd in',
+    'mfg by',
     'packed by',
+    'address line',
+    'registered office',
+    'regd. office',
+    'factory address',
 
     // Hindi
     'निर्माता',
@@ -45,6 +52,9 @@ const FIELD_SYNONYMS = {
     'mfg',
     'mfd',
     'mig',
+    'packing date',
+    'packaging date',
+    'when packed',
     'packed on',
     'date of manufacture',
 
@@ -97,6 +107,14 @@ const FIELD_SYNONYMS = {
     'consumer care',
     'for complaints',
     'helpline',
+    'contact us',
+    'contact no',
+    'contact',
+    'call us',
+    'tel no',
+    'phone no',
+    'email id',
+    'email',
 
     // Hindi
     'ग्राहक सेवा',
