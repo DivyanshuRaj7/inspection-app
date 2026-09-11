@@ -167,10 +167,19 @@ export const FIELD_DEFINITIONS = [
       'mfd date',
       'mfg. date',
       'mfd. date',
+      'mfg.date',
+      'mfd.date',
+      'mfgdate',
+      'mfddate',
       'pkd date',
       'pkd. date',
+      'pkddate',
       'mfg dt',
       'mfd dt',
+      'mfg. dt',
+      'mfd. dt',
+      'mfg-date',
+      'mfd-date',
       'mfg.',
       'mfd.',
       'mfg',
@@ -202,7 +211,10 @@ export const FIELD_DEFINITIONS = [
       'use by',
       'expiry date',
       'exp. date',
+      'exp.date',
       'exp date',
+      'expdate',
+      'exp-date',
       'date of expiry',
       'date of exp',
       'shelf life',
@@ -333,12 +345,20 @@ export const FIELD_DEFINITIONS = [
       'batch no.',
       'batch no:',
       'batch no',
+      'batchno:',
+      'batchno',
+      'batch-no:',
+      'batch-no',
       'lot number:',
       'lot number',
       'lot no.:',
       'lot no.',
       'lot no:',
       'lot no',
+      'lotno:',
+      'lotno',
+      'lot-no:',
+      'lot-no',
       'b. no.:',
       'b. no.',
       'b. no:',
@@ -541,6 +561,19 @@ export function isValidFieldValue(val, matchedAlias = '', definition = null) {
   // Must have at least one alphanumeric character
   if (!/[\p{L}\p{N}]/u.test(clean)) return false;
 
+  // Single or double isolated digits/punctuations/symbols are OCR artifacts, not values (e.g. "3", "1", "|")
+  if (/^[\p{N}\p{P}\p{S}\s]{1,2}$/u.test(clean)) return false;
+
+  // For company name/address, require letters and length >= 3
+  if (definition?.field === 'MANUFACTURER_ADDRESS' || definition?.field === 'MANUFACTURER') {
+    if (!/\p{L}/u.test(clean) || clean.length < 3) return false;
+  }
+
+  // For dates, require either a digit or a month abbreviation/name
+  if (definition?.field === 'MANUFACTURE_DATE' || definition?.field === 'EXPIRY_DATE') {
+    if (!/\d/.test(clean) && !/(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(clean)) return false;
+  }
+
   const lower = clean.toLowerCase();
   if (matchedAlias && lower === matchedAlias.toLowerCase()) return false;
 
@@ -669,6 +702,26 @@ function attachCanonicalAliases(extracted) {
   }
 }
 
+export function cleanLineNoise(str) {
+  if (!str || typeof str !== 'string') return '';
+  return str
+    .replace(/^[|!~§[\]‘'":;,\s]+|[|!~§[\]‘'":;,\s]+$/g, '')
+    .replace(/^\b\d\s+(?=\d{2,})/, '')
+    .replace(/\s+[|]\s*.*$/, '')
+    .replace(/^[:\-\s.,;]+|[:\-\s,;]+$/g, '')
+    .trim();
+}
+
+function cleanDateNoise(str) {
+  if (!str) return '';
+  return str
+    .replace(/^[|!~§[\]‘'":;,\s]+|[|!~§[\]‘'":;,\s]+$/g, '')
+    .replace(/\s+[|].*$/, '')
+    .replace(/\s+[ji0-9]{5,}.*$/i, '')
+    .replace(/^[:\-\s.,;]+|[:\-\s,;]+$/g, '')
+    .trim();
+}
+
 /**
  * Extracts structured fields from OCR text according to Legal Metrology requirements.
  *
@@ -759,12 +812,16 @@ export function extractFields(ocrText, options = {}) {
 
     if (canCollectMore) {
       const maxToCollect = definition.maxLines || 1;
+      let consecutiveBlank = 0;
       while (nextIdx < normalizedLines.length && collectedValues.length < maxToCollect) {
         const nextLine = normalizedLines[nextIdx];
         if (nextLine.isBlank) {
-          // Stop on empty line (section boundary)
-          break;
+          consecutiveBlank++;
+          if (consecutiveBlank > 2) break;
+          nextIdx++;
+          continue;
         }
+        consecutiveBlank = 0;
 
         // Stop if next line matches any known field label
         const nextLabel = detectLabel(nextLine.text);
@@ -773,13 +830,13 @@ export function extractFields(ocrText, options = {}) {
         }
 
         // Substantive continuation line
-        const cleanedLine = nextLine.text.replace(/^[:\-\s.,;]+|[:\-\s,;]+$/g, '').trim();
+        const cleanedLine = cleanLineNoise(nextLine.text);
         if (cleanedLine.length > 0 && /[\p{L}\p{N}]/u.test(cleanedLine)) {
           collectedValues.push(cleanedLine);
           sourceLines.push(nextLine.raw);
           nextIdx++;
         } else {
-          break;
+          nextIdx++;
         }
       }
     }
@@ -792,12 +849,15 @@ export function extractFields(ocrText, options = {}) {
         let entityName = '';
         let addressText = '';
 
-        if (collectedValues.length >= 2) {
-          entityName = collectedValues[0];
-          addressText = collectedValues.slice(1).join(', ');
-        } else {
-          // Single line: check for comma separating entity from location
-          const singleLine = collectedValues[0];
+        const cleanedValid = collectedValues
+          .map(cleanLineNoise)
+          .filter((v) => v.length >= 3 && /\p{L}/u.test(v));
+
+        if (cleanedValid.length >= 2) {
+          entityName = cleanedValid[0];
+          addressText = cleanedValid.slice(1).join(', ');
+        } else if (cleanedValid.length === 1) {
+          const singleLine = cleanedValid[0];
           const commaIdx = singleLine.indexOf(',');
           if (commaIdx !== -1 && commaIdx > 3 && commaIdx < singleLine.length - 3) {
             entityName = singleLine.slice(0, commaIdx).trim();
@@ -806,6 +866,10 @@ export function extractFields(ocrText, options = {}) {
             entityName = singleLine;
             addressText = singleLine;
           }
+        } else if (collectedValues.length > 0) {
+          const fallback = cleanLineNoise(collectedValues[0]);
+          entityName = fallback;
+          addressText = fallback;
         }
 
         const fullText = entityName && addressText && entityName !== addressText
@@ -822,6 +886,7 @@ export function extractFields(ocrText, options = {}) {
           confidence,
           manufacturer: entityName,
           address: addressText,
+          place: addressText,
           full_text: fullText,
         };
 
@@ -836,11 +901,23 @@ export function extractFields(ocrText, options = {}) {
             confidence,
             manufacturer: entityName,
             address: addressText,
+            place: addressText,
             full_text: fullText,
           };
         }
+      } else if (field === 'MANUFACTURE_DATE' || field === 'EXPIRY_DATE') {
+        const valText = cleanDateNoise(collectedValues[0] || '');
+        extracted[field] = {
+          field,
+          value: valText,
+          text: valText,
+          raw_label: rawLabel,
+          matched_label: matchedAlias,
+          source_text: sourceText,
+          confidence,
+        };
       } else {
-        const valText = collectedValues.join('\n');
+        const valText = collectedValues.map(cleanLineNoise).filter(Boolean).join('\n');
         extracted[field] = {
           field,
           value: valText,
@@ -870,7 +947,7 @@ export function extractFields(ocrText, options = {}) {
         clean.length >= 3 &&
         clean.length <= 50 &&
         !/\d{3,}/.test(clean) &&
-        !/(?:ingredients|nutrition|facts|serving|barcode|table|panel|licence|license|evidence|photos)/i.test(clean) &&
+        !/(?:ingredients|nutrition|facts|serving|calories|carbohydrates|protein|fat|sugars|cholesterol|sodium|energy|barcode|table|panel|licence|license|evidence|photos)/i.test(clean) &&
         /^[\p{L}\s.&'-]+$/u.test(clean)
       ) {
         extracted.COMMODITY_NAME = {

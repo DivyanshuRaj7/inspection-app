@@ -89,7 +89,7 @@ export function cleanOcrText(rawText, options = {}) {
         current = [];
       }
     };
-    const LABEL_START_RE = /^(?:MRP|M\.R\.P|Net|Batch|Mfg|Mfd|Exp|Best|Use|Pack|Pkd|Date|Address|Contact|Email|Customer|Consumer|Ingredients|Nutrition|Serving|Calories|Standard|Non Standard|Common Name|Product Name|Lic|FSSAI|Barcode|Store|Keep|When)\b/i;
+    const LABEL_START_RE = /^[^a-zA-Z0-9\u0900-\u097F]*(?:[a-zA-Z]\s+)?(?:MRP|M\.R\.P|Net|Batch|Mfg|Mfd|Exp|Best|Use|Pack|Pkd|Date|Address|Contact|Email|Customer|Consumer|Ingredients|Nutrition|Serving|Calories|Standard|Non Standard|Common Name|Product Name|Lic|FSSAI|Barcode|Store|Keep|When)\b/i;
     for (const line of lines) {
       if (current.length > 0) {
         const prev = current[current.length - 1];

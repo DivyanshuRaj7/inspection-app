@@ -179,11 +179,13 @@ const FIELD_SYNONYMS = {
     // English
     'Batch No',
     'batch no',
+    'batchno',
     'batch number',
     'batch',
     'b.no',
     'b. no',
     'lot no',
+    'lotno',
     'lot number',
     'lot',
 
