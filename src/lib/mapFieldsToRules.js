@@ -41,6 +41,7 @@ const FIELD_SYNONYMS = {
 
   MANUFACTURE_DATE: [
     // English
+    'Mfg. Date',
     'mfg',
     'mfd',
     'mig',
@@ -75,6 +76,7 @@ const FIELD_SYNONYMS = {
 
   MRP: [
     // English
+    'MRP',
     'mrp',
     'm.r.p',
     'maximum retail price',
@@ -90,6 +92,7 @@ const FIELD_SYNONYMS = {
 
   CONSUMER_CARE: [
     // English
+    'Customer Care',
     'customer care',
     'consumer care',
     'for complaints',
@@ -97,6 +100,7 @@ const FIELD_SYNONYMS = {
 
     // Hindi
     'ग्राहक सेवा',
+    'ग्राहक सेवा(कस्टमर केयर)',
     'उपभोक्ता सेवा',
     'शिकायत के लिए',
     'शिकायत हेतु',
@@ -155,6 +159,7 @@ const FIELD_SYNONYMS = {
 
   BATCH_NUMBER: [
     // English
+    'Batch No',
     'batch no',
     'batch number',
     'batch',
@@ -165,6 +170,7 @@ const FIELD_SYNONYMS = {
     'lot',
 
     // Hindi
+    'बैच संख्या',  
     'बैच नं',
     'बैच',
     'लॉट नं',
