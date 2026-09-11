@@ -9,7 +9,7 @@ export const FIELD_DEFINITIONS = [
     canonical: 'manufacturer_address',
     multiline: true,
     maxLines: 5,
-    noiseTokens: ['by', 'address', 'details', 'name', 'at', 'निर्माता', 'पैककर्ता', 'विपणनकर्ता'],
+    noiseTokens: ['by', 'address', 'details', 'name', 'at', 'place', 'location', 'स्थान', 'निर्माता', 'पैककर्ता', 'विपणनकर्ता'],
     aliases: [
       // English - ordered by specificity / length
       'manufactured & marketed by',
@@ -45,6 +45,26 @@ export const FIELD_DEFINITIONS = [
       'manufacturer',
       'mfg address',
       'mfg. address',
+      // Place of manufacture aliases
+      'place of manufacture',
+      'place of manufacturing',
+      'place of packing',
+      'place of packaging',
+      'place of import',
+      'place of origin',
+      'manufacturing place',
+      'manufacturing unit',
+      'manufacturing facility',
+      'manufacturing location',
+      'factory location',
+      'plant location',
+      'unit location',
+      'mfg place',
+      'mfg location',
+      'place:',
+      'place',
+      'location:',
+      'location',
       'address line 1',
       'address line 2',
       'address line',
@@ -64,6 +84,11 @@ export const FIELD_DEFINITIONS = [
       'निर्माता',
       'विपणनकर्ता',
       'पैककर्ता',
+      'निर्माण स्थान',
+      'उत्पादन स्थान',
+      'पैकिंग स्थान',
+      'स्थान:',
+      'स्थान',
       'पता:',
       'पता',
     ],
@@ -150,6 +175,7 @@ export const FIELD_DEFINITIONS = [
     noiseTokens: ['date', 'of', 'mfg', 'pkd', 'तिथि', 'दिनांक'],
     aliases: [
       'date of manufacture',
+      'date of manufacturing',
       'date of packaging',
       'date of packing',
       'date of import',
@@ -180,11 +206,21 @@ export const FIELD_DEFINITIONS = [
       'mfd. dt',
       'mfg-date',
       'mfd-date',
+      // OCR misread variants
+      'mig. date',
+      'mig.date',
+      'mig date',
+      'mfq. date',
+      'mfq date',
+      'mfg, date',
+      'mfd, date',
+      'mig.',
       'mfg.',
       'mfd.',
       'mfg',
       'mfd',
       'mig',
+      'mfq',
       'pkd',
       // Hindi
       'निर्माण दिनांक',
@@ -223,6 +259,12 @@ export const FIELD_DEFINITIONS = [
       'exp.',
       'exp',
       'bb',
+      // OCR misread variants
+      'exp, date',
+      'exo. date',
+      'exo date',
+      'exy. date',
+      'exy date',
       // Hindi
       'समाप्ति तिथि',
       'समाप्ति दिनांक',
@@ -615,6 +657,16 @@ function attachCanonicalAliases(extracted) {
       extracted.MANUFACTURER_ADDRESS?.value ||
       extracted.MANUFACTURER_ADDRESS?.text ||
       null,
+    place: () =>
+      extracted.MANUFACTURER_ADDRESS?.place ||
+      extracted.MANUFACTURER_ADDRESS?.address ||
+      extracted.MANUFACTURER_ADDRESS?.value ||
+      null,
+    place_of_manufacture: () =>
+      extracted.MANUFACTURER_ADDRESS?.place ||
+      extracted.MANUFACTURER_ADDRESS?.address ||
+      extracted.MANUFACTURER_ADDRESS?.value ||
+      null,
     customer_care: () =>
       extracted.CONSUMER_CARE?.value ||
       extracted.CONSUMER_CARE?.text ||
@@ -702,12 +754,23 @@ function attachCanonicalAliases(extracted) {
   }
 }
 
+const PRESERVED_TRAIL_TOKENS = new Set([
+  'g', 'gm', 'kg', 'ml', 'l', 'oz', 'mg', 'cl', 'cc',
+  'no', 'dt', 'st', 'rd', 'th', 'in', 'at', 'to', 'by', 'of', 'co', 'up',
+  'ii', 'iii', 'iv', 'vi', 'vii', 'viii', 'ix', 'xi', 'xii',
+]);
+
 export function cleanLineNoise(str) {
   if (!str || typeof str !== 'string') return '';
   return str
-    .replace(/^[|!~§[\]‘'":;,\s]+|[|!~§[\]‘'":;,\s]+$/g, '')
+    .replace(/^[|!~§[\]‘'":;,\s<>&»«*#]+|[|!~§[\]‘'":;,\s<>&»«*#]+$/g, '')
     .replace(/^\b\d\s+(?=\d{2,})/, '')
     .replace(/\s+[|]\s*.*$/, '')
+    .replace(/\s+[0-9a-zA-Z!~§[\]‘'":;<>»«]{1,2}$/, (match) => {
+      const lower = match.trim().toLowerCase();
+      if (PRESERVED_TRAIL_TOKENS.has(lower)) return match;
+      return '';
+    })
     .replace(/^[:\-\s.,;]+|[:\-\s,;]+$/g, '')
     .trim();
 }
@@ -715,9 +778,10 @@ export function cleanLineNoise(str) {
 function cleanDateNoise(str) {
   if (!str) return '';
   return str
-    .replace(/^[|!~§[\]‘'":;,\s]+|[|!~§[\]‘'":;,\s]+$/g, '')
+    .replace(/^[|!~§[\]‘'":;,\s<>&»«*#]+|[|!~§[\]‘'":;,\s<>&»«*#]+$/g, '')
     .replace(/\s+[|].*$/, '')
     .replace(/\s+[ji0-9]{5,}.*$/i, '')
+    .replace(/([a-zA-Z]+)(\d{4})/g, '$1 $2')
     .replace(/^[:\-\s.,;]+|[:\-\s,;]+$/g, '')
     .trim();
 }
@@ -853,6 +917,8 @@ export function extractFields(ocrText, options = {}) {
           .map(cleanLineNoise)
           .filter((v) => v.length >= 3 && /\p{L}/u.test(v));
 
+        const isExplicitPlaceAlias = /place|location|स्थान/i.test(matchedAlias);
+
         if (cleanedValid.length >= 2) {
           entityName = cleanedValid[0];
           addressText = cleanedValid.slice(1).join(', ');
@@ -862,14 +928,32 @@ export function extractFields(ocrText, options = {}) {
           if (commaIdx !== -1 && commaIdx > 3 && commaIdx < singleLine.length - 3) {
             entityName = singleLine.slice(0, commaIdx).trim();
             addressText = singleLine.slice(commaIdx + 1).trim();
+          } else if (isExplicitPlaceAlias) {
+            addressText = singleLine;
           } else {
             entityName = singleLine;
             addressText = singleLine;
           }
         } else if (collectedValues.length > 0) {
           const fallback = cleanLineNoise(collectedValues[0]);
-          entityName = fallback;
-          addressText = fallback;
+          if (isExplicitPlaceAlias) {
+            addressText = fallback;
+          } else {
+            entityName = fallback;
+            addressText = fallback;
+          }
+        }
+
+        // Preserve previously extracted entity name if this line only has the place/address
+        const existingEntity = extracted.MANUFACTURER?.value || extracted.MANUFACTURER_ADDRESS?.manufacturer;
+        if (existingEntity && (!entityName || entityName === addressText || isExplicitPlaceAlias)) {
+          entityName = existingEntity;
+        }
+
+        // Preserve previously extracted address if this line only has the entity name
+        const existingAddress = extracted.MANUFACTURER_ADDRESS?.address;
+        if (existingAddress && (!addressText || entityName === addressText) && !isExplicitPlaceAlias) {
+          addressText = existingAddress;
         }
 
         const fullText = entityName && addressText && entityName !== addressText
@@ -903,6 +987,18 @@ export function extractFields(ocrText, options = {}) {
             address: addressText,
             place: addressText,
             full_text: fullText,
+          };
+        }
+
+        if (isExplicitPlaceAlias || (addressText && addressText !== entityName)) {
+          extracted.PLACE_OF_MANUFACTURE = {
+            field: 'PLACE_OF_MANUFACTURE',
+            value: addressText,
+            text: addressText,
+            raw_label: rawLabel,
+            matched_label: matchedAlias,
+            source_text: sourceText,
+            confidence,
           };
         }
       } else if (field === 'MANUFACTURE_DATE' || field === 'EXPIRY_DATE') {
@@ -956,6 +1052,186 @@ export function extractFields(ocrText, options = {}) {
           text: clean,
           raw_label: '',
           matched_label: 'product title',
+          source_text: item.raw,
+          confidence,
+        };
+        break;
+      }
+    }
+  }
+
+  // Stage 7: Regex fallback for MANUFACTURE_DATE when label detection missed it
+  // Catches OCR-garbled labels like "Mig, Bate:" or lines where only the date
+  // pattern survives (e.g. "13 June 2025", "06/2025", "JUN 2025").
+  if (!extracted.MANUFACTURE_DATE) {
+    const MFG_DATE_RE = /(?:mf[gd]|mig|mfq|pkd|pkg)\.?\s*,?\s*(?:d(?:a|e)?te?|dt)?\.?\s*[:.]?\s*(\d{1,2}[\s/.-]+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s/.-]+\d{2,4}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s/.-]+\d{2,4}|\d{1,2}[\s/.-]+\d{1,2}[\s/.-]+\d{2,4})/i;
+    for (const item of normalizedLines) {
+      if (item.isBlank) continue;
+      const m = item.text.match(MFG_DATE_RE);
+      if (m && m[1]) {
+        const dateVal = cleanDateNoise(m[1]);
+        if (dateVal && /\d/.test(dateVal)) {
+          extracted.MANUFACTURE_DATE = {
+            field: 'MANUFACTURE_DATE',
+            value: dateVal,
+            text: dateVal,
+            raw_label: m[0].slice(0, m[0].indexOf(m[1])).trim(),
+            matched_label: 'regex fallback',
+            source_text: item.raw,
+            confidence,
+          };
+          break;
+        }
+      }
+    }
+  }
+
+  // Stage 8: Regex fallback for EXPIRY_DATE
+  if (!extracted.EXPIRY_DATE) {
+    const EXP_DATE_RE = /(?:exp|exo|exy|best\s*before|use\s*by|bb)\.?\s*,?\s*(?:d(?:a|e)?te?|dt)?\.?\s*[:.]?\s*(\d{1,2}[\s/.-]+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s/.-]+\d{2,4}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s/.-]+\d{2,4}|\d{1,2}[\s/.-]+\d{1,2}[\s/.-]+\d{2,4})/i;
+    for (const item of normalizedLines) {
+      if (item.isBlank) continue;
+      const m = item.text.match(EXP_DATE_RE);
+      if (m && m[1]) {
+        const dateVal = cleanDateNoise(m[1]);
+        if (dateVal && /\d/.test(dateVal)) {
+          extracted.EXPIRY_DATE = {
+            field: 'EXPIRY_DATE',
+            value: dateVal,
+            text: dateVal,
+            raw_label: m[0].slice(0, m[0].indexOf(m[1])).trim(),
+            matched_label: 'regex fallback',
+            source_text: item.raw,
+            confidence,
+          };
+          break;
+        }
+      }
+    }
+  }
+
+  // Stage 9: Regex fallback for NET_QUANTITY
+  // Catches patterns like "150g", "250 ml", "1.5 L", "500 gm", "Net 150g"
+  if (!extracted.NET_QUANTITY) {
+    const NET_QTY_RE = /(?:net\s*(?:wt|weight|qty|quantity|vol|volume|content)?\.?\s*[:.]?\s*)?\b(\d+(?:\.\d+)?\s*(?:g|gm|gms|gram|grams|kg|kgs|ml|l|ltr|litre|litres|liter|liters|oz|fl\s*oz|cc|cl|pieces?|pcs?|units?)\b)/i;
+    for (const item of normalizedLines) {
+      if (item.isBlank) continue;
+      // Skip lines that are clearly nutrition info, not net quantity
+      if (/(?:serving|calories|total\s*fat|saturated|carbohydrate|sugar|protein|sodium|cholesterol|energy|per\s*serving|amount\s*per)/i.test(item.text)) continue;
+      // Skip lines already consumed by other fields
+      if (/(?:mrp|m\.r\.p|price|₹|rs\.?)/i.test(item.text)) continue;
+      const m = item.text.match(NET_QTY_RE);
+      if (m && m[1]) {
+        const qtyVal = m[1].trim();
+        // Only accept if the line looks like it's about net quantity (has "net" or is standalone)
+        const lineWords = item.text.trim().split(/\s+/);
+        const hasNetLabel = /net/i.test(item.text);
+        const isShortLine = lineWords.length <= 4;
+        if (hasNetLabel || isShortLine) {
+          extracted.NET_QUANTITY = {
+            field: 'NET_QUANTITY',
+            value: qtyVal,
+            text: qtyVal,
+            raw_label: hasNetLabel ? item.text.slice(0, item.text.toLowerCase().indexOf('net')) + 'Net' : '',
+            matched_label: 'regex fallback',
+            source_text: item.raw,
+            confidence,
+          };
+          break;
+        }
+      }
+    }
+  }
+
+  // Stage 10: Address / Place of Manufacture fallback
+  // If MANUFACTURER_ADDRESS has no address (or address is identical to entityName),
+  // search lines for common geographic/address keywords (e.g. "Industrial Area", "Road", "Mumbai", "India")
+  const currentAddress = extracted.MANUFACTURER_ADDRESS?.address;
+  const currentEntity = extracted.MANUFACTURER_ADDRESS?.manufacturer;
+  if (!currentAddress || currentAddress === currentEntity) {
+    const ADDRESS_LINE_RE = /(?:industrial area|industrial estate|plot no|survey no|p\.?o\.?|road|rd\.?|street|st\.?|sector|phase|nagar|colony|mumbai|delhi|bengaluru|bangalore|hyderabad|chennai|kolkata|pune|ahmedabad|india|pin\s*[-:]?\s*\d{6}|\b\d{6}\b)/i;
+    for (const item of normalizedLines) {
+      if (item.isBlank) continue;
+      // Skip lines belonging to ingredients, nutrition, dates, contact, MRP
+      if (/(?:ingredients|nutrition|facts|serving|calories|fat|sugar|protein|date|exp|mfg|batch|mrp|customer|care|email)/i.test(item.text)) continue;
+      if (ADDRESS_LINE_RE.test(item.text)) {
+        const cleanAddr = cleanLineNoise(item.text);
+        if (cleanAddr.length >= 6) {
+          const entity = currentEntity || cleanAddr;
+          const full = entity !== cleanAddr ? `${entity}, ${cleanAddr}` : cleanAddr;
+          extracted.MANUFACTURER_ADDRESS = {
+            field: 'MANUFACTURER_ADDRESS',
+            value: cleanAddr,
+            text: cleanAddr,
+            raw_label: '',
+            matched_label: 'address fallback',
+            source_text: item.raw,
+            confidence,
+            manufacturer: entity,
+            address: cleanAddr,
+            place: cleanAddr,
+            full_text: full,
+          };
+          extracted.PLACE_OF_MANUFACTURE = {
+            field: 'PLACE_OF_MANUFACTURE',
+            value: cleanAddr,
+            text: cleanAddr,
+            raw_label: '',
+            matched_label: 'address fallback',
+            source_text: item.raw,
+            confidence,
+          };
+          break;
+        }
+      }
+    }
+  }
+
+  // Stage 11: Regex fallback for MRP
+  // Catches lines like "₹120 (Incl. of all taxes)", "Rs. 120", "MRP: ₹120", or OCR misreads like "§ vee. 120 (Incl. of all taxes)"
+  if (!extracted.MRP) {
+    const MRP_FALLBACK_RE = /(?:(?:mrp|m\.r\.p|price|vee|mro|vrp|₹|rs\.?)\b.*?(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s*(?:\(?(?:incl|inclusive|of\s*all\s*taxes))|(?:[₹\?]|rs\.?)\s*(\d+(?:\.\d{1,2})?))/i;
+    for (const item of normalizedLines) {
+      if (item.isBlank) continue;
+      if (/(?:total|fat|sugar|protein|carbohydrates|serving|size|calories)/i.test(item.text)) continue;
+      const m = item.text.match(MRP_FALLBACK_RE);
+      if (m) {
+        const num = m[1] || m[2] || m[3];
+        if (num && parseFloat(num) > 0) {
+          const hasIncl = /incl/i.test(item.text);
+          const valStr = `₹${num}${hasIncl ? ' (Incl. of all taxes)' : ''}`;
+          extracted.MRP = {
+            field: 'MRP',
+            value: valStr,
+            text: `MRP: ${valStr}`,
+            raw_label: 'MRP:',
+            matched_label: 'regex fallback',
+            source_text: item.raw,
+            confidence,
+          };
+          break;
+        }
+      }
+    }
+  }
+
+  // Stage 12: Contact / Email fallback
+  if (!extracted.CONSUMER_CARE || !extracted.CONSUMER_CARE.value) {
+    const EMAIL_RE = /\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/;
+    const PHONE_RE = /\b(1800[- ]?\d{3}[- ]?\d{3,4}|\d{3,5}[- ]?\d{6,8})\b/;
+    for (const item of normalizedLines) {
+      if (item.isBlank) continue;
+      const em = item.text.match(EMAIL_RE);
+      const pm = item.text.match(PHONE_RE);
+      if (em || pm) {
+        const parts = [pm ? pm[1] : null, em ? em[1] : null].filter(Boolean);
+        const contactVal = parts.join('\n');
+        extracted.CONSUMER_CARE = {
+          field: 'CONSUMER_CARE',
+          value: contactVal,
+          text: contactVal,
+          raw_label: 'Contact:',
+          matched_label: 'regex fallback',
           source_text: item.raw,
           confidence,
         };
