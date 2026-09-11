@@ -42,6 +42,16 @@
       "effective_to": null
     },
     {
+      "rule_id": "EXPIRY_DATE_PRESENCE",
+      "description": "Best-before or use-by date must be declared where applicable",
+      "clause_citation": "Rule 6(1)(d)",
+      "field": "EXPIRY_DATE",
+      "check_type": "presence",
+      "severity": "substantive",
+      "effective_from": "2011-06-01",
+      "effective_to": null
+    },
+    {
       "rule_id": "MRP_PRESENCE",
       "description": "Retail sale price must be declared on the package",
       "clause_citation": "Rule 6(1)(e)",

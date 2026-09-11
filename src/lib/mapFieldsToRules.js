@@ -1,9 +1,5 @@
-// src/lib/mapFieldsToRules.js — NEW FILE, fills Pipeline Step 6a
-// Bridges CV's checkImage() output into RE's checkCompliance() input shape.
-// Minimal, R1-scoped version: whole-image confidence stands in for
-// per-field confidence (correct under Mini Bible's "single full-image
-// OCR pass" scope — true per-field confidence needs bounding boxes,
-// which are explicitly [SKIP] for R1/R2).
+// src/lib/mapFieldsToRules.js — Bridges CV's checkImage() output into RE's checkCompliance() input shape.
+import { extractFields } from './fieldExtractor.js';
 
 const FIELD_SYNONYMS = {
   MANUFACTURER_ADDRESS: [
@@ -61,6 +57,22 @@ const FIELD_SYNONYMS = {
     'पैक किया गया'
   ],
 
+  EXPIRY_DATE: [
+    // English
+    'expiry date',
+    'exp date',
+    'exp. date',
+    'best before',
+    'use by',
+    'bb',
+    'shelf life',
+
+    // Hindi
+    'समाप्ति तिथि',
+    'समाप्ति दिनांक',
+    'उपयोग की अंतिम तिथि',
+  ],
+
   MRP: [
     // English
     'mrp',
@@ -113,6 +125,7 @@ const FIELD_SYNONYMS = {
     'unit price',
     'usp',
     'u.s.p',
+    
     'per g',
     'per kg',
     'per ml',
@@ -287,21 +300,5 @@ export function fieldsArrayToExtracted(fieldsArray, { onDuplicate = (msg) => con
 }
 
 export function mapFieldsToRules(ocrText, wholeImageConfidence, isImported = false) {
-  const lines = (ocrText || '').split('\n').map((l) => l.trim()).filter(Boolean);
-  const confidence = (wholeImageConfidence || 0) / 100; // RE expects 0-1, CV gives 0-100
-
-  const extracted = {};
-  for (const [ruleField, synonyms] of Object.entries(FIELD_SYNONYMS)) {
-    const hit = lines.find((line) =>
-      synonyms.some((syn) => line.toLowerCase().includes(syn))
-    );
-    if (hit) {
-      extracted[ruleField] = { text: hit, confidence };
-    }
-    // no match → field simply absent from extracted{}, which presencechecker.js
-    // already handles correctly (returns passed:false, "field is missing")
-  }
-
-  extracted.isImported = isImported; // R1: no automatic detection: needs an inspector toggle in UI (Phase C)
-  return extracted;
+  return extractFields(ocrText, { wholeImageConfidence, isImported });
 }

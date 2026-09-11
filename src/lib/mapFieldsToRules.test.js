@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyRegionText, attachRegionBoxes, zoneForBox, fieldsArrayToExtracted } from './mapFieldsToRules.js';
+import { classifyRegionText, attachRegionBoxes, zoneForBox, fieldsArrayToExtracted, mapFieldsToRules } from './mapFieldsToRules.js';
 
 describe('classifyRegionText', () => {
   it('maps an MRP line to the MRP field', () => {
@@ -202,3 +202,49 @@ describe('fieldsArrayToExtracted', () => {
     assert.deepEqual(fieldsArrayToExtracted(null, { onDuplicate: noop }), {});
   });
 });
+
+describe('mapFieldsToRules integration', () => {
+  it('extracts structured fields from user regression OCR text', () => {
+    const ocrText = [
+      'Manufactured By: By:',
+      'ABC Food Products Pvt. Ltd',
+      '123, Industrial Area, Mumbai, India',
+      'Customer Care: 1800-123-4567',
+    ].join('\n');
+
+    const fields = mapFieldsToRules(ocrText, 95);
+
+    assert.equal(fields.manufacturer, 'ABC Food Products Pvt. Ltd');
+    assert.equal(fields.manufactured_by, 'ABC Food Products Pvt. Ltd');
+    assert.equal(fields.manufacturer_address, '123, Industrial Area, Mumbai, India');
+    assert.equal(fields.customer_care, '1800-123-4567');
+    assert.notEqual(fields.manufacturer_address, 'Manufactured By: By:');
+
+    assert.equal(fields.MANUFACTURER_ADDRESS.text, '123, Industrial Area, Mumbai, India');
+    assert.equal(fields.MANUFACTURER.text, 'ABC Food Products Pvt. Ltd');
+    assert.equal(fields.CONSUMER_CARE.text, '1800-123-4567');
+    assert.equal(fields.isImported, false);
+  });
+
+  it('handles bilingual Hindi packaging and next-line values', () => {
+    const ocrText = [
+      'निर्माता: By:',
+      'पतंजलि आयुर्वेद लिमिटेड',
+      'हरिद्वार, उत्तराखंड - 249401',
+      'ग्राहक सेवा: 1800-180-4187',
+      'शुद्ध वजन:',
+      '1 किग्रा',
+      'अधिकतम खुदरा मूल्य: ₹250',
+    ].join('\n');
+
+    const fields = mapFieldsToRules(ocrText, 90, true);
+
+    assert.equal(fields.manufacturer, 'पतंजलि आयुर्वेद लिमिटेड');
+    assert.equal(fields.manufacturer_address, 'हरिद्वार, उत्तराखंड - 249401');
+    assert.equal(fields.customer_care, '1800-180-4187');
+    assert.equal(fields.net_quantity, '1 किग्रा');
+    assert.equal(fields.mrp, '₹250');
+    assert.equal(fields.isImported, true);
+  });
+});
+

@@ -77,7 +77,7 @@ function runTest(testName, extractedData) {
 
 
 // =====================================================
-// BASE VALID DATA (Covers all 13 rules)
+// BASE VALID DATA (Covers all 14 rules)
 // =====================================================
 
 const baseData = {
@@ -99,6 +99,11 @@ const baseData = {
 
     MANUFACTURE_DATE: {
         text: "08/2026",
+        confidence: 0.91
+    },
+
+    EXPIRY_DATE: {
+        text: "02/2027",
         confidence: 0.91
     },
 
@@ -156,9 +161,9 @@ console.log("=======================================================");
 
 // Test 1: Full compliance across all 13 rules
 const test1 = { ...baseData };
-const res1 = runTest("===== TEST 1: FULLY COMPLIANT (ALL 13 RULES) =====", test1);
-if (res1.verdict !== "COMPLIANT" || res1.passedRules !== 13 || res1.failedRules !== 0) {
-    throw new Error(`Test 1 Failed: Expected COMPLIANT (13 passed), got ${res1.verdict} (${res1.passedRules} passed)`);
+const res1 = runTest("===== TEST 1: FULLY COMPLIANT (ALL 14 RULES) =====", test1);
+if (res1.verdict !== "COMPLIANT" || res1.passedRules !== 14 || res1.failedRules !== 0) {
+    throw new Error(`Test 1 Failed: Expected COMPLIANT (14 passed), got ${res1.verdict} (${res1.passedRules} passed)`);
 }
 
 // Test 2: Cosmetic failure (font size)
@@ -200,7 +205,7 @@ const test4 = {
     BATCH_NUMBER: null
 };
 const res4 = runTest("===== TEST 4: ALL 4 CONDITIONAL RULES SKIPPED =====", test4);
-if (res4.verdict !== "COMPLIANT" || res4.skippedRules !== 4 || res4.passedRules !== 9) {
+if (res4.verdict !== "COMPLIANT" || res4.skippedRules !== 4 || res4.passedRules !== 10) {
     throw new Error(`Test 4 Failed: Expected 4 skipped, got ${res4.skippedRules}`);
 }
 
@@ -247,7 +252,7 @@ if (res7.verdict !== "NON_COMPLIANT" || !batchFailed) {
 }
 
 console.log("\n=======================================================");
-console.log("✅ ALL 7 TEST SUITES PASSED — ALL 13 RULES VERIFIED!");
+console.log("✅ ALL 7 TEST SUITES PASSED — ALL 14 RULES VERIFIED!");
 console.log("=======================================================");
 console.log(`Total Rules in Ruleconfig: ${ruleConfig.rules.length}`);
 ruleConfig.rules.forEach((r, idx) => {

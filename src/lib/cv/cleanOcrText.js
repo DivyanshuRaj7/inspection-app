@@ -56,7 +56,20 @@ export function cleanOcrText(rawText, options = {}) {
       if (m) {
         const key = m[1].trim();
         const value = m[2].trim();
-        if (key && value) extractedFields[key] = value; // last wins on duplicates
+        if (key && value) {
+          // Strip duplicate tokens / stutter from value (e.g. key ends with "By", value starts with "By:")
+          const keyWords = key.toLowerCase().split(/\s+/).filter(Boolean);
+          const lastWord = keyWords[keyWords.length - 1];
+          let cleanVal = value.replace(/^[:\-\s.,;]+|[:\-\s,;]+$/g, '');
+          if (lastWord && lastWord.length >= 2) {
+            const escaped = lastWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const stutterRegex = new RegExp(`^(?:${escaped}[:\\-\\s.,;]*)+`, 'i');
+            cleanVal = cleanVal.replace(stutterRegex, '').replace(/^[:\-\s.,;]+|[:\-\s,;]+$/g, '');
+          }
+          if (cleanVal && countAlnum(cleanVal) >= 1) {
+            extractedFields[key] = cleanVal; // last wins on duplicates
+          }
+        }
       }
     }
 
